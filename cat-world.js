@@ -103,7 +103,7 @@
     box(park, '#35634a', 104, 0.34, 80, 0, -0.2, 0);
     for (const [x, z, width, depth] of [
       [0, 5, 4.4, 61], [-18, -8, 36, 3.1], [20, -7, 40, 3.1],
-      [17, 18, 35, 3], [-31, 19, 25, 2.8]
+      [10, 18, 21, 3], [-31, 19, 25, 2.8]
     ]) {
       box(park, '#756c59', width + 0.34, 0.08, depth + 0.34, x, 0.02, z);
       box(park, '#bba98a', width, 0.055, depth, x, 0.07, z);
@@ -194,15 +194,18 @@
       jet.material.opacity = 0.72;
       waterJets.push(jet);
     }
-    const fountainFish = [];
-    for (let i = 0; i < 6; i++) {
+    function makeFish(color) {
       const fish = new T.Group();
-      const color = ['#f0a55e', '#e9d27e', '#d8766d', '#93bfc3', '#e6a66b', '#f0c77c'][i];
       ball(fish, color, 0.33, 0.12, 0.19, 0, 0, 0);
       const tail = mesh(fish, new T.ConeGeometry(0.15, 0.28, 3), color, -0.38, 0, 0);
       tail.rotation.z = -Math.PI / 2;
       ball(fish, '#243a42', 0.025, 0.025, 0.02, 0.22, 0.05, 0.14);
       park.add(fish);
+      return fish;
+    }
+    const fountainFish = [];
+    for (let i = 0; i < 6; i++) {
+      const fish = makeFish(['#f0a55e', '#e9d27e', '#d8766d', '#93bfc3', '#e6a66b', '#f0c77c'][i]);
       fountainFish.push({ fish, angle: i * Math.PI / 3, radius: 1.45 + i % 2 * 0.7 });
     }
 
@@ -211,6 +214,12 @@
     pond.scale.z = 0.74;
     pond.material.roughness = 0.24;
     pond.material.metalness = 0.12;
+    const pondFish = [];
+    for (let i = 0; i < 6; i++) {
+      const fish = makeFish(['#ef8846', '#f5ca58', '#dc665f', '#f0f0d5', '#e79752', '#edb76d'][i]);
+      fish.scale.set(1.25, 0.65, 1.15);
+      pondFish.push({ fish, radius: 1.5 + i % 3 * 0.9 });
+    }
     for (let i = 0; i < 24; i++) {
       const angle = i * Math.PI * 2 / 24;
       ball(park, i % 3 ? '#75837a' : '#a6a997', 0.48, 0.2, 0.38,
@@ -762,6 +771,14 @@
           0.78 + Math.sin(worldTime * 2.5 + i) * 0.045,
           fountainCenter.z + Math.sin(angle) * radius);
         fish.rotation.y = -angle - Math.PI / 2;
+      }
+      for (let i = 0; i < pondFish.length; i++) {
+        const { fish, radius } = pondFish[i];
+        const angle = worldTime * (0.3 + i * 0.025) + i * Math.PI / 3;
+        fish.position.set(pondCenter.x + Math.cos(angle) * radius,
+          0.1 + Math.sin(worldTime * 2 + i) * 0.012,
+          pondCenter.z + Math.sin(angle) * radius * 0.74);
+        fish.rotation.y = Math.atan2(-Math.cos(angle) * 0.74, -Math.sin(angle));
       }
       for (let i = 0; i < waterJets.length; i++) {
         const height = 0.9 + Math.sin(worldTime * 3.2 + i * 0.7) * 0.14;
