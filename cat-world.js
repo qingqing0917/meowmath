@@ -101,14 +101,6 @@
     const homeGround = homeLayout.ground;
 
     box(park, '#35634a', 104, 0.34, 80, 0, -0.2, 0);
-    for (const [x, z, sx, sz, color] of [
-      [-36, -27, 17, 10, '#3f7050'], [38, -24, 22, 12, '#46754f'],
-      [-35, 24, 23, 13, '#2d5c48'], [37, 28, 18, 10, '#497a55'],
-      [-3, 26, 14, 9, '#477550'], [12, -29, 20, 8, '#2e5d49']
-    ]) {
-      const grass = ball(park, color, sx, 0.035, sz, x, 0.015, z);
-      grass.castShadow = false;
-    }
     for (const [x, z, width, depth] of [
       [0, 5, 4.4, 61], [-18, -8, 36, 3.1], [20, -7, 40, 3.1],
       [17, 18, 35, 3], [-31, 19, 25, 2.8]
