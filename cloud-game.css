@@ -1,0 +1,28 @@
+.auth-locked .screen { display: none !important; }
+#account-bar { position: relative; z-index: 5; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 8px 14px; max-width: 980px; margin: 0 auto;
+  padding: 12px 20px; background: rgba(255,255,255,.92); color: #355a50;
+  font-size: 13px; }
+#account-name { overflow-wrap: anywhere; }
+#account-bar button { background: transparent; color: #355a50; font-size: 13px;
+  padding: 5px 0; text-decoration: underline; }
+#save-status { margin-right: auto; }
+#save-status.save-error { color: #a13c36; }
+#auth-screen { position: relative; z-index: 5; min-height: 85vh; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 30px 20px; text-align: center; }
+#auth-screen h1 { font-size: 30px; color: #355a50; }
+#auth-screen .auth-cat { width: 128px; height: 128px; font-size: 90px; line-height: 128px; }
+#google-login { color: #355a50; background: white; padding: 12px 24px;
+  border: 1px solid #8da9a0; border-radius: 6px; text-decoration: none; font-weight: 700; }
+#auth-local { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+#auth-local button, #auth-retry { padding: 11px 16px; border-radius: 6px;
+  background: #3d7867; color: white; font-size: 15px; }
+#auth-screen [hidden], #account-bar[hidden], #account-bar [hidden], #auth-screen[hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  #account-bar { padding: 10px 14px; gap: 6px 12px; }
+  #account-name { width: 100%; }
+  #auth-screen h1 { font-size: 24px; }
+}

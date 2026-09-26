@@ -1,0 +1,2671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乘法猫猫乐园 🐱</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  /* html/body 别写死 height:100%，否则背景渐变只有一屏高、往下会重复出现一条接缝 */
+  html { min-height:100%; }
+  body {
+    font-family: "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background: linear-gradient(180deg,#aee3ff 0%,#d8f3ff 42%,#d3f0d0 64%,#a6e29a 84%,#8ace6b 100%);
+    background-repeat:no-repeat;
+    min-height:100vh; overflow-x:hidden;
+    user-select:none; -webkit-user-select:none;
+  }
+  /* 装饰云朵 */
+  .cloud { position:fixed; font-size:60px; opacity:.8; pointer-events:none; z-index:0;
+    animation: drift 60s linear infinite; }
+  @keyframes drift { from{transform:translateX(-150px)} to{transform:translateX(110vw)} }
+
+  /* 挂在天上的太阳（跟云朵一样属于整页的大背景） */
+  .sun-deco { position:fixed; top:4px; right:22px; width:96px; height:96px;
+    z-index:0; pointer-events:none; }
+  .sun-deco svg { animation:sunspin 45s linear infinite; transform-origin:center; }
+  @keyframes sunspin { to { transform:rotate(360deg); } }
+
+  /* ── 小猫村：不加框，直接长在页面的草地上 ── */
+  .home-village { margin-top:26px; padding-bottom:44px; }
+  .hv-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+    margin:0 0 6px 8px; position:relative; z-index:2; }
+  .hv-title { font-size:26px; font-weight:800; color:#3d7a4e;
+    text-shadow:0 2px 0 rgba(255,255,255,.85); }
+  .hv-tip { font-size:15px; color:#4f8763; font-weight:600; }
+  .village-pager { display:none; align-items:center; gap:8px; margin-left:auto;
+    color:#3d7a4e; font-size:14px; font-weight:800; }
+  .village-pager button { width:32px; height:32px; border-radius:8px; background:#fff;
+    color:#3d7a4e; font-size:24px; line-height:1; box-shadow:0 2px 6px rgba(40,80,40,.14); }
+  .village-pager button:disabled { opacity:.4; cursor:default; }
+  /* 草地铺满整个窗口宽度，上边缘用透明渐变化开，跟页面背景融在一起 */
+  .village-scene { position:relative; height:430px;
+    width:100vw; left:50%; transform:translateX(-50%); }
+  .village-scene:before { content:''; position:absolute; left:0; right:0; top:10%; bottom:-44px;
+    background:linear-gradient(180deg, rgba(138,206,107,0) 0%, rgba(138,206,107,.5) 24%,
+      #9ed881 46%, #8ace6b 100%); pointer-events:none; }
+  /* 房子·树·猫都待在页面正中这条带子里，草地才通铺到窗口两边 */
+  .v-stage { position:absolute; left:50%; transform:translateX(-50%); bottom:0;
+    width:min(100%, 940px); height:100%; }
+  .v-house, .v-tree { position:absolute; }
+  .v-house { z-index:1; padding:0; background:none; cursor:pointer; }
+  .v-house:hover { filter:brightness(1.07); }
+  .v-house:focus-visible, .v-kiosk:focus-visible { outline:3px solid #3f9be8; outline-offset:3px; }
+  .v-house .house-door { transform-box:fill-box; transform-origin:left center; transition:transform .25s ease; }
+  .v-house.open .house-door { transform:scaleX(.12); }
+  .v-house.occupied::after { content:'zZ'; position:absolute; right:4%; top:-12px;
+    color:#597db2; font-size:18px; font-weight:900; pointer-events:none; }
+  .v-tree { pointer-events:none; }
+  .v-tree { z-index:2; }
+  .v-house svg, .v-tree svg { display:block; width:100%; height:auto; }
+  .village-neighborhood { width:min(100%, 940px); margin:0 auto; padding:22px 12px 10px; }
+  .village-neighborhood h3 { color:#326b46; font-size:19px; margin:0 0 14px; }
+  .village-house-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:12px 8px; }
+  .v-house.grid-house { position:relative; width:100%; aspect-ratio:1; z-index:1;
+    background:rgba(255,255,255,.16); border-radius:6px; overflow:visible; }
+  .grid-house .house-number { display:block; color:#3b6d49; font-size:11px; font-weight:800;
+    margin-top:-2px; line-height:1; }
+  .grid-house .v-house-runner { position:absolute; left:-30px; bottom:10px; width:52px;
+    opacity:0; pointer-events:none; z-index:3; }
+  .grid-house .v-house-runner.entering { animation:neighborhoodRunIn .8s ease-in forwards; }
+  .grid-house .v-house-runner.leaving { animation:neighborhoodRunOut .8s ease-out forwards; }
+  @keyframes neighborhoodRunIn { from{left:-30px;transform:scale(1);opacity:1}
+    to{left:calc(50% - 26px);transform:scale(.3);opacity:0} }
+  @keyframes neighborhoodRunOut { from{left:calc(50% - 26px);transform:scale(.3);opacity:0}
+    to{left:-30px;transform:scale(1);opacity:1} }
+  .v-kiosk { position:absolute; left:44%; bottom:50%; width:12%; min-width:82px;
+    z-index:5; padding:0; background:none; filter:drop-shadow(0 4px 3px rgba(60,80,50,.2)); }
+  .v-kiosk svg { display:block; width:100%; height:auto; }
+  .v-kiosk:hover { filter:brightness(1.08) drop-shadow(0 4px 3px rgba(60,80,50,.2)); }
+  .v-cat { position:absolute; transform:translateX(-50%); cursor:pointer; text-align:center;
+    transition:filter .15s; }
+  .v-cat:hover { filter:brightness(1.06); }
+  .v-cat.running-in { animation:vRunIn .8s ease-in forwards; pointer-events:none; }
+  .v-cat.running-out { animation:vRunOut .8s ease-out; pointer-events:none; }
+  .v-cat.in-house { visibility:hidden; }
+  .v-cat.running-in .v-name, .v-cat.running-out .v-name { opacity:0; }
+  @keyframes vRunIn { from{transform:translateX(-50%) scale(1);opacity:1}
+    to{transform:translate(calc(-50% + var(--run-x)),var(--run-y)) scale(.28);opacity:0} }
+  @keyframes vRunOut { from{transform:translate(calc(-50% + var(--run-x)),var(--run-y)) scale(.28);opacity:0}
+    to{transform:translateX(-50%) scale(1);opacity:1} }
+  .v-cat svg { position:relative; z-index:1; }
+  .v-mat { position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    height:18px; background:rgba(248,223,174,.9); border-radius:50%; z-index:0; }
+  .v-name { display:inline-block; background:rgba(255,255,255,.92); border-radius:999px;
+    padding:2px 12px; font-size:13px; font-weight:700; color:#5a4632;
+    box-shadow:0 2px 6px rgba(0,0,0,.12); margin-top:-4px; position:relative; z-index:2; }
+
+  .screen { display:none; position:relative; z-index:1; max-width:860px; margin:0 auto;
+    padding:24px 20px 40px; min-height:100vh; }
+  #screen-home { max-width:980px; padding-bottom:0; }
+  .screen.active { display:block; }
+  .world-scene { position:relative; left:50%; transform:translateX(-50%); width:100vw;
+    height:clamp(500px,74vh,760px); margin:12px 0 26px; overflow:hidden;
+    background:#a5c6bd; outline:none; }
+  .world-scene:focus-visible { outline:3px solid #3f9be8; outline-offset:-3px; }
+  .world-canvas { position:absolute; inset:0; }
+  .world-canvas canvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  .world-canvas canvas:active { cursor:grabbing; }
+  .world-modes { position:absolute; top:18px; left:max(18px,calc((100vw - 940px)/2));
+    z-index:2; display:flex; padding:4px; gap:3px; background:rgba(255,255,255,.94);
+    border-radius:8px; box-shadow:0 3px 14px rgba(49,75,63,.2); }
+  .world-mode { min-width:80px; padding:9px 13px; border-radius:5px; background:transparent;
+    color:#476a59; font-size:15px; font-weight:800; }
+  .world-mode.selected { background:#477f6c; color:#fff; }
+  .world-action { position:absolute; right:max(18px,calc((100vw - 940px)/2)); bottom:20px;
+    z-index:2; min-width:114px; min-height:43px; padding:8px 16px; border-radius:8px;
+    background:#fff; color:#346654; font-size:16px; font-weight:800;
+    box-shadow:0 4px 14px rgba(49,75,63,.22); }
+  .world-action:hover, .world-mode:not(.selected):hover { background:#e8f4ec; }
+  .world-fallback { position:absolute; inset:0; display:grid; place-items:center;
+    color:#416a5c; font-size:17px; font-weight:700; }
+  .world-fallback[hidden] { display:none; }
+
+  h1.title { text-align:center; color:#ff7b54; font-size:44px; margin:10px 0 4px;
+    text-shadow: 0 3px 0 #fff, 0 6px 12px rgba(0,0,0,.12); letter-spacing:2px; }
+  .subtitle { text-align:center; color:#4a7a5a; font-size:18px; margin-bottom:20px; }
+
+  .card { background:rgba(255,255,255,.92); border-radius:28px; padding:24px;
+    box-shadow:0 8px 24px rgba(60,100,80,.15); }
+
+  button { font-family:inherit; cursor:pointer; border:none; }
+  .btn {
+    display:inline-block; padding:14px 30px; border-radius:999px; font-size:22px; font-weight:700;
+    color:#fff; background:linear-gradient(180deg,#ffa94d,#ff7b54);
+    box-shadow:0 5px 0 #e05a35, 0 8px 16px rgba(224,90,53,.3);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .btn:active { transform:translateY(4px); box-shadow:0 1px 0 #e05a35; }
+  .btn.green { background:linear-gradient(180deg,#7ed957,#4caf50); box-shadow:0 5px 0 #3a8a3e,0 8px 16px rgba(58,138,62,.3); }
+  .btn.green:active { box-shadow:0 1px 0 #3a8a3e; }
+  .btn.blue { background:linear-gradient(180deg,#6ec6ff,#3f9be8); box-shadow:0 5px 0 #2d7bc0,0 8px 16px rgba(45,123,192,.3); }
+  .btn.blue:active { box-shadow:0 1px 0 #2d7bc0; }
+  .btn.purple { background:linear-gradient(180deg,#c49bff,#9b6ce8); box-shadow:0 5px 0 #7a4ec0,0 8px 16px rgba(122,78,192,.3); }
+  .btn.purple:active { box-shadow:0 1px 0 #7a4ec0; }
+  .btn.small { font-size:16px; padding:8px 18px; box-shadow:0 3px 0 rgba(0,0,0,.2); }
+  .btn.ghost { background:#fff; color:#888; box-shadow:0 3px 0 #ccc; font-size:16px; padding:8px 18px; }
+
+  /* ── 领养界面 ── */
+  .adopt-grid { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:20px; }
+  .adopt-card { background:#fff; border-radius:24px; padding:18px 14px 20px; width:200px; text-align:center;
+    box-shadow:0 6px 18px rgba(60,100,80,.18); cursor:pointer; border:4px solid transparent;
+    transition:transform .15s, border-color .15s; }
+  .adopt-card:hover { transform:translateY(-6px) scale(1.03); border-color:#ffbb66; }
+  .adopt-card .cat-name { font-size:22px; font-weight:800; color:#5a4632; margin-top:6px; }
+  .adopt-card .cat-desc { font-size:14px; color:#999; margin-top:4px; }
+  .adopt-card .cat-english, .g-card .latin { font-size:12px; color:#858f91; margin-top:2px; }
+  .breed-tools { display:flex; justify-content:center; align-items:center; gap:12px;
+    flex-wrap:wrap; margin:0 auto 16px; }
+  .breed-search { width:min(100%, 300px); padding:10px 14px; border:2px solid #a8cfb0;
+    border-radius:8px; background:#fff; color:#3a4a3e; font:inherit; font-size:16px; }
+  .breed-search:focus { outline:3px solid #7ab9dc; outline-offset:2px; }
+  .breed-count { color:#4f785c; font-size:15px; font-weight:700; }
+
+  /* ── 主页 ── */
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;}
+  .fish-badge { background:#fff; border-radius:999px; padding:8px 20px; font-size:22px; font-weight:800;
+    color:#3f7fb5; box-shadow:0 4px 10px rgba(0,0,0,.1); }
+  .home-layout { display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; }
+  .cat-stage-area { flex:1 1 500px; text-align:center; position:relative; }
+  .cat-holder { position:absolute; left:50%; bottom:6px; cursor:pointer; z-index:3;
+    transform:translateX(-50%); transform-origin:50% 100%;
+    transition: transform .55s cubic-bezier(.34,1.15,.64,1); }
+  .cat-holder.to-bowl { transform: translate(calc(-50% + 72px), 0); }
+  /* 睡觉：猫窝往右挪，避开左边的猫爬架 */
+  .cat-holder.sleeping { transform: translate(calc(-50% + 34px), 0); }
+  .cat-holder.on-mid  { transform: translate(calc(-50% - 176px), -114px) scale(.72); }
+  .cat-holder.on-top  { transform: translate(calc(-50% - 156px), -328px) scale(.58); }
+  /* 爬进透明睡碗里打盹（缩成一团窝在碗里） */
+  .cat-holder.in-bowl { transform: translate(calc(-50% - 156px), -138px) scale(.56); }
+  /* 走到柱子边磨爪（站地上，靠向爬架） */
+  .cat-holder.at-post { transform: translate(calc(-50% - 150px), 0) scale(.92); }
+  /* 走到球球下面拍球 */
+  .cat-holder.at-ball { transform: translate(calc(-50% - 108px), 0) scale(.94); }
+  /* 磨爪子：微微前倾 + 快速上下蹭 */
+  .cat-holder.scratching svg { animation: scratchmove .26s ease-in-out 5; transform-origin:50% 100%; }
+  @keyframes scratchmove { 0%{transform:translateY(0) rotate(-7deg)} 50%{transform:translateY(-8px) rotate(-9deg)} 100%{transform:translateY(0) rotate(-7deg)} }
+  /* 拍球：抬手往球那边够 */
+  .cat-holder.swatting svg { animation: swatpaw .34s ease-in-out 3; transform-origin:60% 100%; }
+  @keyframes swatpaw { 0%{transform:rotate(0)} 45%{transform:translateY(-10px) rotate(-13deg)} 100%{transform:rotate(0)} }
+  /* 在木板上爬来爬去（holder 保持 on-mid 定位，svg 自己左右晃） */
+  .cat-holder.pacing svg { animation: pacing 1.5s ease-in-out infinite; }
+  @keyframes pacing { 0%,100%{transform:translateX(-12px) rotate(-3deg)} 50%{transform:translateX(12px) rotate(3deg)} }
+  .cat-holder svg { filter: drop-shadow(0 10px 8px rgba(0,0,0,.12)); }
+  /* 猫猫头顶的名牌输入框 */
+  .name-tag { display:inline-flex; align-items:center; gap:6px; margin-bottom:6px;
+    background:#fff; border:3px dashed #ffc7d9; border-radius:16px; padding:5px 12px;
+    box-shadow:0 4px 10px rgba(0,0,0,.07); transition:border-color .2s, box-shadow .2s, transform .2s; }
+  .name-tag:focus-within { border-style:solid; border-color:#ff8fb1; transform:translateY(-2px);
+    box-shadow:0 6px 16px rgba(255,143,177,.3); }
+  .name-tag.named { border-style:solid; border-color:#ffd7e4; }
+  .name-tag .tag-icon { font-size:18px; }
+  .name-tag input { border:none; outline:none; background:transparent; width:7em;
+    font-family:inherit; font-size:19px; font-weight:800; color:#6b5b53; text-align:center; }
+  .name-tag input::placeholder { color:#e0b9c6; font-weight:700; font-size:16px; }
+  .name-tag.saved { animation: tagpop .45s ease; }
+  @keyframes tagpop { 0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1)} }
+  /* 男孩 / 女孩 */
+  .tag-row { display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .name-tag { margin-bottom:0; }
+  .sex-pick { display:inline-flex; gap:4px; background:#fff; border-radius:14px; padding:4px;
+    box-shadow:0 4px 10px rgba(0,0,0,.07); }
+  .sex-btn { border:none; background:transparent; border-radius:11px; padding:5px 10px; cursor:pointer;
+    font-family:inherit; font-size:15px; font-weight:800; color:#b9aca4; transition:all .18s; }
+  .sex-btn:hover { background:#f6f2ee; }
+  .sex-btn.on.girl { background:#ffd7e4; color:#c2436d; }
+  .sex-btn.on.boy  { background:#cfe4f8; color:#2f6fb5; }
+  .cat-hint { font-size:13px; color:#96b09c; margin-top:2px; }
+  .pet-zone { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'><text y='27' font-size='26'>🖐</text></svg>") 17 17, pointer; }
+  .gn { opacity:0; pointer-events:none; }
+  .gn.show { animation: gnfloat 3.5s ease forwards; }
+  @keyframes gnfloat { 0%{opacity:0; transform:translateY(10px)} 12%{opacity:1; transform:translateY(0)}
+    80%{opacity:1} 100%{opacity:0; transform:translateY(-12px)} }
+  .cat-holder .eyes-squint { display:none; }
+  .cat-holder.petting .eyes-open { display:none; }
+  .cat-holder.petting .eyes-squint { display:block; }
+  .zz { animation: zfloat 2.4s ease-in-out infinite; opacity:0; }
+  @keyframes zfloat { 0%{opacity:0; transform:translateY(8px)} 30%{opacity:1}
+    70%{opacity:.9} 100%{opacity:0; transform:translateY(-16px)} }
+  .cat-bounce { animation: bounce .6s ease; }
+  /* 猫舞台：左边猫爬架 · 中间猫咪 · 右边猫碗 */
+  .cat-scene { position:relative; width:480px; max-width:100%; height:430px; margin:0 auto;
+    background:linear-gradient(to bottom,#f5f8f7 0 82%,#e7eee7 82%); }
+  .wall-picture { position:absolute; top:44px; right:20px; width:128px; height:102px;
+    z-index:1; pointer-events:none; filter:drop-shadow(0 4px 3px rgba(60,80,66,.18)); }
+  .cat-floor-mat { position:absolute; left:50%; bottom:8px; width:min(200px,58%); height:46px;
+    transform:translateX(-50%); border:5px solid #e9aa7e; border-radius:50%;
+    background:#f7d9ad; box-shadow:0 6px 10px rgba(83,58,33,.15), inset 0 0 0 2px #fff0d6;
+    pointer-events:none; z-index:2; transition:transform .55s cubic-bezier(.34,1.15,.64,1); }
+  .cat-floor-mat::after { content:''; position:absolute; inset:6px; border:2px dashed #d89d6c; border-radius:50%; }
+  .cat-holder.sleeping + .cat-floor-mat { transform:translateX(calc(-50% + 34px)); }
+  /* 碗压在猫身前面，小猫低头吃的时候碗才不会被身子挡住 */
+  .cat-bowl { position:absolute; right:12px; bottom:14px; width:88px; pointer-events:none;
+    transform-origin:50% 90%; z-index:4; }
+  .cat-bowl.hit { animation: bowlhit .45s ease; }
+  @keyframes bowlhit { 0%{transform:scale(1)} 25%{transform:scale(1.14,.86)} 60%{transform:scale(.96,1.05)} 100%{transform:scale(1)} }
+  .bowl-food { opacity:0; transition:opacity .15s; }
+  .bowl-food.on { opacity:1; }
+  .fall-food { position:absolute; right:39px; top:10px; font-size:34px; z-index:5;
+    pointer-events:none; animation: fishfall .8s cubic-bezier(.5,.05,.85,.6) forwards; }
+  @keyframes fishfall {
+    0%   { top:6px; opacity:0; transform:rotate(-25deg) }
+    15%  { opacity:1 }
+    100% { top:calc(100% - 68px); opacity:1; transform:rotate(20deg) }
+  }
+  /* 猫爬架：柱子磨爪 · 木板攀爬 · 球球拍打，三个区域各自可点 */
+  .cat-tree { position:absolute; left:6px; bottom:0; width:160px; z-index:1;
+    transition:filter .15s; }
+  .tree-boards, .tree-posts, .tree-bed { cursor:pointer; transition:filter .15s; }
+  .tree-boards:hover, .tree-posts:hover {
+    filter:brightness(1.06) drop-shadow(0 0 5px rgba(255,190,110,.85)); }
+  .tree-bed:hover { filter:brightness(1.05) drop-shadow(0 0 6px rgba(150,210,245,.95)); }
+  /* 透明睡碗上的 Zzz，只有在里面打盹时才浮出来 */
+  .bed-zzz { opacity:0; transition:opacity .3s; }
+  .cat-scene.napping .bed-zzz { opacity:1; }
+  /* 逗猫球：浮在猫前面独立一层，绳子从爬架顶垂下来；只有球和绳能被点，空白处点击穿透到猫 */
+  .cat-toy { position:absolute; left:140px; top:82px; width:60px; height:250px; z-index:6;
+    transform-origin:12px 0; animation: toyswing 2.6s ease-in-out infinite; overflow:visible;
+    pointer-events:none; }
+  .cat-toy line, .cat-toy circle { pointer-events:auto; cursor:pointer; }
+  .cat-toy circle:hover { filter:brightness(1.06) drop-shadow(0 0 5px rgba(255,150,180,.9)); }
+  @keyframes toyswing { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+  /* 被拍打时甩得又大又快 */
+  .cat-toy.swatting { animation: ballswat 1.1s cubic-bezier(.3,.7,.5,1); }
+  @keyframes ballswat { 0%{transform:rotate(0)} 12%{transform:rotate(32deg)} 30%{transform:rotate(-24deg)}
+    48%{transform:rotate(18deg)} 66%{transform:rotate(-11deg)} 82%{transform:rotate(6deg)} 100%{transform:rotate(0)} }
+  .cat-hop { animation: cathop .3s ease-in-out 2; }
+  @keyframes cathop { 0%{transform:translateY(0)} 45%{transform:translateY(-14px)} 100%{transform:translateY(0)} }
+  .cat-eat { animation: cateat .42s ease-in-out 3; }
+  @keyframes cateat { 0%{transform:translateY(0) scaleY(1)} 50%{transform:translateY(8px) scaleY(.94)} 100%{transform:translateY(0) scaleY(1)} }
+  @keyframes bounce { 0%{transform:scale(1)} 30%{transform:scale(1.12,.88)} 60%{transform:scale(.94,1.06)} 100%{transform:scale(1)} }
+  .speech-bubble { position:absolute; top:-10px; right:-40px; background:#fff; border-radius:16px;
+    padding:8px 14px; font-size:16px; color:#666; box-shadow:0 4px 10px rgba(0,0,0,.12);
+    opacity:0; transition:opacity .3s; white-space:nowrap; }
+  .speech-bubble.show { opacity:1; }
+  .speech-bubble:after { content:''; position:absolute; bottom:-8px; left:20px;
+    border:8px solid transparent; border-top-color:#fff; border-bottom:0; }
+  .cat-title { font-size:26px; font-weight:800; color:#5a4632; margin-top:4px; }
+  .stage-chip { display:inline-block; background:#ffe9c2; color:#b5762a; border-radius:999px;
+    padding:3px 14px; font-size:15px; font-weight:700; margin-left:6px; vertical-align:middle;}
+  .cat-stats { display:flex; justify-content:center; gap:16px; flex-wrap:wrap;
+    margin-top:6px; color:#55705e; font-size:15px; }
+  .cat-stats strong { color:#355943; }
+  .xp-wrap { max-width:280px; margin:10px auto 12px; }
+  .xp-bar { height:18px; background:#eee; border-radius:999px; overflow:hidden; box-shadow:inset 0 2px 4px rgba(0,0,0,.1); }
+  .xp-fill { height:100%; background:linear-gradient(90deg,#7ed957,#4caf50); border-radius:999px;
+    transition:width .5s; }
+  .xp-text { font-size:13px; color:#888; margin-top:4px; }
+  .shop-row { display:grid; grid-template-columns:64px minmax(0,360px); gap:12px;
+    max-width:436px; margin:10px auto 0; align-items:center; }
+  .shop-label { color:#45654b; font-size:20px; font-weight:800; text-align:right; }
+  .food-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+  .food-btn { display:flex; align-items:center; gap:9px; min-height:62px; padding:8px 11px;
+    border:2px solid #b8dfaa; border-radius:8px; background:#fff; text-align:left;
+    transition:transform .12s, border-color .12s, box-shadow .12s; }
+  .food-btn:hover:not(:disabled) { transform:translateY(-2px); border-color:#69ba6c; box-shadow:0 3px 8px rgba(75,145,78,.14); }
+  .food-btn:active:not(:disabled) { transform:translateY(1px); }
+  .food-btn.unavailable { opacity:.55; }
+  .food-btn:disabled { opacity:.55; cursor:wait; }
+  .food-btn .food-icon { flex:none; width:30px; font-size:25px; text-align:center; }
+  .food-btn .food-name { display:block; color:#45654b; font-size:16px; font-weight:800; }
+  .food-btn .food-value { display:block; color:#748577; font-size:12px; white-space:nowrap; }
+  .menu-col { flex:1 1 300px; display:flex; flex-direction:column; gap:14px; justify-content:center; }
+  .mode-btn { display:flex; align-items:center; gap:14px; background:#fff; border-radius:20px;
+    padding:14px 18px; box-shadow:0 5px 14px rgba(60,100,80,.14); cursor:pointer; text-align:left;
+    border:3px solid transparent; transition:transform .12s, border-color .12s; width:100%; }
+  .mode-btn:hover { transform:translateX(6px); border-color:#ffcf8a; }
+  .mode-btn .icon { font-size:36px; }
+  .mode-btn .t { font-size:21px; font-weight:800; color:#4a4a4a; }
+  .mode-btn .d { font-size:14px; color:#999; margin-top:2px; }
+  .rev-badge { background:#ff5a5a; color:#fff; border-radius:999px; font-size:14px; font-weight:800;
+    padding:2px 10px; margin-left:8px; }
+  .footer-links { text-align:center; margin-top:22px; display:flex; gap:12px; justify-content:center; }
+
+  /* ── 答题界面 ── */
+  .game-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .progress-paws { font-size:22px; letter-spacing:2px; }
+  .combo-tag { font-size:20px; font-weight:900; color:#ff7b54; opacity:0; transition:opacity .2s, transform .2s; }
+  .combo-tag.show { opacity:1; animation:pop .3s; }
+  @keyframes pop { 0%{transform:scale(.5)} 60%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .timer-wrap { height:16px; background:#fff; border-radius:999px; overflow:hidden; margin-bottom:16px;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.15); }
+  .timer-fill { height:100%; background:linear-gradient(90deg,#6ec6ff,#3f9be8); transition:width 1s linear; }
+  .timer-fill.hurry { background:linear-gradient(90deg,#ff9a5a,#ff5a5a); }
+  .question-card { text-align:center; padding:36px 24px; position:relative; overflow:hidden; }
+  .question-card.flash-good { animation:flashG .5s; }
+  .question-card.flash-bad { animation:shake .4s; }
+  @keyframes flashG { 0%{background:#dcffd6} 100%{background:rgba(255,255,255,.92)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  .q-text { font-size:72px; font-weight:900; color:#3a3a4a; letter-spacing:4px; }
+  .q-text .op { color:#ff7b54; }
+  .answer-row { margin-top:24px; display:flex; gap:12px; justify-content:center; align-items:center; }
+  #answerInput { width:200px; font-size:48px; font-weight:800; text-align:center; padding:8px;
+    border:4px solid #ffcf8a; border-radius:18px; outline:none; color:#3a3a4a; font-family:inherit; }
+  #answerInput:focus { border-color:#ff9a3d; box-shadow:0 0 0 5px rgba(255,154,61,.25); }
+  .mini-cat-corner { position:absolute; right:14px; bottom:6px; opacity:.9; }
+  .encourage-tag { min-height:36px; font-size:24px; font-weight:800; color:#ff6f91;
+    opacity:0; transition:opacity .25s; margin-top:8px; }
+  .encourage-tag.show { opacity:1; animation:pop .3s; }
+  .game-fish { font-size:20px; font-weight:800; color:#3f7fb5; }
+
+  /* 口诀卡 */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(40,40,60,.45);
+    z-index:50; align-items:center; justify-content:center; padding:20px; }
+  .overlay.show { display:flex; }
+  .snack-panel { width:min(100%,400px); padding:20px; background:#fff; border-radius:8px;
+    box-shadow:0 18px 48px rgba(30,55,40,.25); }
+  .snack-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .snack-head h2 { color:#45654b; font-size:22px; }
+  .snack-close { width:32px; height:32px; background:#eef3ed; color:#4c6452;
+    border-radius:50%; font-size:24px; line-height:1; }
+  .snack-close:focus-visible, .snack-option:focus-visible { outline:3px solid #3f9be8; outline-offset:2px; }
+  .snack-balance { margin:5px 0 12px; color:#477ca7; font-size:15px; font-weight:700; }
+  .snack-recipient { margin:-5px 0 12px; color:#6a7b6e; font-size:13px; }
+  .snack-option { display:flex; align-items:center; gap:12px; width:100%; min-height:60px;
+    padding:9px 4px; background:#fff; border-top:1px solid #e5ece5; text-align:left; }
+  .snack-option:hover { background:#f2f8f2; }
+  .snack-option.unavailable { opacity:.55; }
+  .snack-option .snack-icon { width:38px; flex:none; text-align:center; font-size:28px; }
+  .snack-option .snack-name { color:#405e48; font-size:17px; font-weight:800; }
+  .snack-option .snack-price { margin-left:auto; color:#718378; font-size:13px; text-align:right; flex:none; }
+  .snack-option .snack-price small { display:block; font-size:12px; }
+  .koujue-card { background:#fff; border-radius:30px; padding:36px 40px; text-align:center;
+    max-width:520px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.3); animation:popin .3s; }
+  @keyframes popin { from{transform:scale(.7); opacity:0} to{transform:scale(1); opacity:1} }
+  .kj-label { font-size:18px; color:#999; }
+  .kj-formula { font-size:40px; font-weight:800; color:#3a3a4a; margin:10px 0; }
+  .kj-rhyme { font-size:52px; font-weight:900; color:#ff7b54; margin:8px 0 18px; letter-spacing:6px; }
+  .kj-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+
+  /* 结算 */
+  .result-card { text-align:center; padding:40px 24px; }
+  .result-stars { font-size:64px; letter-spacing:8px; margin:10px 0; }
+  .result-big { font-size:34px; font-weight:900; color:#3a3a4a; margin:6px 0; }
+  .result-sub { font-size:20px; color:#777; margin:6px 0 22px; }
+
+  /* 图鉴 */
+  .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:16px; margin-top:16px; }
+  .g-card { background:#fff; border-radius:22px; padding:14px 10px 16px; text-align:center;
+    box-shadow:0 5px 14px rgba(60,100,80,.14); border:4px solid transparent; position:relative; }
+  .g-card.active-cat { border-color:#7ed957; }
+  .g-card.active-cat:before { content:'当前伙伴'; position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+    background:#4caf50; color:#fff; font-size:12px; font-weight:700; border-radius:999px; padding:2px 10px; }
+  .g-card .n { font-size:18px; font-weight:800; color:#5a4632; margin-top:4px; }
+  .g-card .s { font-size:13px; color:#999; margin-top:2px; }
+  .g-card .g-meta { color:#55705e; font-size:12px; margin-top:5px; }
+  .g-card.locked { opacity:.85; }
+  .g-card.locked svg { opacity:.8; }
+
+  /* 家长面板 */
+  .heatmap { border-collapse:collapse; margin:14px auto; }
+  .heatmap td, .heatmap th { width:64px; height:44px; text-align:center; border:2px solid #fff;
+    border-radius:8px; font-size:12px; }
+  .heatmap th { font-size:15px; font-weight:800; color:#666; }
+  .hm-cell { border-radius:10px; font-weight:700; color:#fff; }
+  .weak-list { margin:10px auto; max-width:480px; }
+  .weak-item { display:flex; justify-content:space-between; background:#fff5f5; border-radius:12px;
+    padding:8px 16px; margin:6px 0; font-size:17px; color:#c0392b; font-weight:700; }
+  .parent-section-title { font-size:20px; font-weight:800; color:#4a4a4a; margin:24px 0 6px; text-align:center; }
+
+  /* 彩带 */
+  .confetti-piece { position:fixed; top:-20px; width:12px; height:12px; z-index:100; pointer-events:none;
+    animation:fall linear forwards; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(720deg); opacity:.6; } }
+
+  /* 爱心 & 小鱼飘 */
+  .float-emo { position:absolute; font-size:28px; pointer-events:none; animation:floatUp 1.2s ease-out forwards; z-index:20;}
+  @keyframes floatUp { from{opacity:1; transform:translateY(0) scale(.6)} to{opacity:0; transform:translateY(-90px) scale(1.4)} }
+
+  /* 进化动画 */
+  .evo-card { background:radial-gradient(circle,#fffbe8,#ffe9b8); border-radius:30px; padding:40px; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,.35); animation:popin .4s; }
+  .evo-title { font-size:34px; font-weight:900; color:#e08a1e; margin-bottom:10px; }
+  .evo-glow { animation:glowpulse 1.2s ease infinite; display:inline-block; }
+  @keyframes glowpulse { 0%,100%{filter:drop-shadow(0 0 6px gold)} 50%{filter:drop-shadow(0 0 26px gold)} }
+
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:#3a3a4a; color:#fff; border-radius:999px; padding:12px 26px; font-size:18px;
+    z-index:120; transition:transform .3s; box-shadow:0 8px 20px rgba(0,0,0,.3); }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  .twinkle { animation: twk 1.4s ease infinite; transform-origin:center; }
+  @keyframes twk { 0%,100%{opacity:1; } 50%{opacity:.25;} }
+
+  @media (max-width:600px) {
+    .q-text { font-size:52px; }
+    h1.title { font-size:32px; }
+    .world-scene { height:clamp(430px,65vh,560px); }
+    .world-modes { top:12px; left:12px; }
+    .world-action { right:12px; bottom:12px; }
+  }
+  @media (max-width:520px) {
+    .food-grid { grid-template-columns:1fr; }
+  }
+  @media (max-width:390px) {
+    .shop-row { grid-template-columns:1fr; gap:6px; }
+    .shop-label { text-align:left; }
+  }
+</style>
+<link rel="stylesheet" href="cloud-game.css">
+</head>
+<body>
+<div id="account-bar">
+  <span id="account-name">正在连接…</span>
+  <span id="save-status" role="status" aria-live="polite"></span>
+  <button id="save-retry" hidden>重试保存</button>
+  <button id="save-reload" hidden>重新加载</button>
+  <button id="save-export">导出存档</button>
+  <button id="save-export-backup" hidden>导出未同步备份</button>
+  <button id="save-import" hidden>导入旧存档</button>
+  <input id="save-import-file" type="file" accept=".json,application/json" hidden>
+  <button id="account-logout" hidden>退出账号</button>
+</div>
+<section id="auth-screen" hidden>
+  <div class="auth-cat" aria-hidden="true">🐱</div>
+  <h1>乘法猫猫乐园</h1>
+  <p id="auth-message" role="status">正在连接…</p>
+  <a id="google-login" href="/auth/google" hidden>使用 Google 登录</a>
+  <div id="auth-local" hidden>
+    <button data-account="owner">我的测试账号 · 无限鱼干</button>
+    <button data-account="player">普通测试账号</button>
+  </div>
+  <button id="auth-retry" hidden>重新连接</button>
+</section>
+<div class="sun-deco">
+      <svg viewBox="0 0 100 100" width="92" height="92">
+        <g fill="#ffd54a">
+          <rect x="47" y="0" width="6" height="15" rx="3"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(45 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(90 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(135 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(180 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(225 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(270 50 50)"/>
+          <rect x="47" y="0" width="6" height="15" rx="3" transform="rotate(315 50 50)"/>
+        </g>
+        <circle cx="50" cy="50" r="23" fill="#ffdf6b" stroke="#f5c93d" stroke-width="3"/>
+      </svg>
+</div>
+<div class="cloud" style="top:6%; animation-duration:75s;">☁️</div>
+<div class="cloud" style="top:16%; animation-duration:95s; animation-delay:-30s; font-size:44px;">☁️</div>
+<div class="cloud" style="top:2%; animation-duration:60s; animation-delay:-50s; font-size:36px;">☁️</div>
+
+<!-- ═══ 领养界面 ═══ -->
+<div class="screen" id="screen-adopt">
+  <h1 class="title">🐾 乘法猫猫乐园 🐾</h1>
+  <p class="subtitle" id="adopt-subtitle">欢迎来到猫猫乐园！先领养一只属于你的小猫咪吧～</p>
+  <div class="breed-tools">
+    <input class="breed-search" id="adopt-search" type="search" placeholder="搜索猫咪品种" aria-label="搜索领养品种" oninput="renderAdopt(state.cats.length===0)">
+    <span class="breed-count" id="adopt-count"></span>
+  </div>
+  <div class="adopt-grid" id="adopt-grid"></div>
+  <div style="text-align:center; margin-top:20px;">
+    <button class="btn ghost" id="adopt-back" style="display:none;" onclick="showScreen('home')">返回</button>
+  </div>
+</div>
+
+<!-- ═══ 主页 ═══ -->
+<div class="screen" id="screen-home">
+  <h1 class="title">🐾 乘法猫猫乐园 🐾</h1>
+  <div class="topbar">
+    <div class="fish-badge">🐟 <span id="fish-count">∞</span> 条小鱼干</div>
+    <div>
+      <button class="btn ghost" onclick="showGallery()">📖 猫咪图鉴</button>
+      <button class="btn ghost" onclick="openParentGate()">👨‍👩‍👧 家长</button>
+    </div>
+  </div>
+  <section class="world-scene" id="cat-world" tabindex="0" aria-label="3D 猫咪家与公园">
+    <div class="world-canvas"></div>
+    <div class="world-modes" role="group" aria-label="场景">
+      <button type="button" class="world-mode selected" data-mode="home" aria-pressed="true" title="回到家">🏠 家</button>
+      <button type="button" class="world-mode" data-mode="park" aria-pressed="false" title="去公园">🌳 公园</button>
+    </div>
+    <button type="button" class="world-action" title="穿过家门">🌳 去公园</button>
+    <div class="world-fallback" id="world-fallback" hidden>3D 场景暂时无法显示</div>
+  </section>
+  <div class="card">
+    <div class="home-layout">
+      <div class="cat-stage-area">
+        <div class="tag-row">
+          <div class="name-tag" id="name-tag" title="在这里给猫猫起个名字">
+            <span class="tag-icon">🏷️</span>
+            <input id="cat-name-input" maxlength="8" placeholder="起个名字吧～"
+                   autocomplete="off" spellcheck="false"
+                   oninput="onNameInput(this.value)" onkeydown="onNameKey(event)">
+          </div>
+          <div class="sex-pick" id="sex-pick" title="它是男孩还是女孩？">
+            <button type="button" class="sex-btn girl" id="sex-girl" onclick="setSex('girl')">♀ 女孩</button>
+            <button type="button" class="sex-btn boy"  id="sex-boy"  onclick="setSex('boy')">♂ 男孩</button>
+          </div>
+        </div>
+        <div class="cat-scene" id="cat-scene">
+          <svg class="wall-picture" viewBox="0 0 128 102" aria-hidden="true">
+            <rect x="3" y="3" width="122" height="96" rx="3" fill="#c58b55" stroke="#9d673c" stroke-width="3"/>
+            <rect x="12" y="12" width="104" height="78" fill="#c5e9ee" stroke="#f8d7a7" stroke-width="3"/>
+            <path d="M14 70 Q37 59 63 68 T114 66 V88 H14 Z" fill="#71b8c7"/>
+            <path d="M26 30 Q44 20 63 27" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+            <ellipse cx="68" cy="54" rx="22" ry="12" fill="#ffaf70"/>
+            <path d="M49 54 L35 43 V65 Z" fill="#f58c60"/>
+            <circle cx="77" cy="51" r="2.5" fill="#493c38"/>
+            <path d="M60 59 Q69 65 80 58" fill="none" stroke="#eb835c" stroke-width="2"/>
+            <circle cx="94" cy="40" r="4" fill="none" stroke="#fff" stroke-width="2"/>
+            <circle cx="101" cy="30" r="2.5" fill="none" stroke="#fff" stroke-width="2"/>
+          </svg>
+          <!-- 猫爬架：点柱子磨爪 / 点木板爬上去 / 点球球拍打 -->
+          <svg class="cat-tree" id="cat-tree" viewBox="0 0 160 350" width="160" height="350"><title>猫爬架</title>
+            <ellipse cx="80" cy="344" rx="68" ry="8" fill="rgba(0,0,0,.12)" pointer-events="none"/>
+            <!-- 木板子（底座 + 两层跳板）：点一下猫爬上去爬来爬去 -->
+            <g class="tree-boards" onclick="climbBoard()"><title>木板</title>
+              <rect x="8" y="316" width="144" height="28" rx="13" fill="#e0a465"/>
+              <rect x="8" y="332" width="144" height="12" rx="6" fill="#c1843f"/>
+              <rect x="8" y="230" width="100" height="20" rx="10" fill="#e0a465"/>
+              <rect x="8" y="242" width="100" height="8" rx="4" fill="#c1843f"/>
+              <rect x="16" y="8" width="128" height="20" rx="10" fill="#e0a465"/>
+              <rect x="16" y="20" width="128" height="8" rx="4" fill="#c1843f"/>
+            </g>
+            <!-- 柱子（缠剑麻绳的棍子）：点一下猫来磨爪子 -->
+            <g class="tree-posts" onclick="scratchPost()"><title>磨爪柱</title>
+              <rect x="44" y="250" width="28" height="68" rx="7" fill="#eddcbc"/>
+              <g stroke="#d3b98c" stroke-width="3" stroke-linecap="round" pointer-events="none">
+                <line x1="46" y1="256" x2="74" y2="259"/><line x1="46" y1="268" x2="74" y2="271"/><line x1="46" y1="280" x2="74" y2="283"/>
+                <line x1="46" y1="292" x2="74" y2="295"/><line x1="46" y1="304" x2="74" y2="307"/>
+              </g>
+              <rect x="64" y="26" width="28" height="212" rx="7" fill="#eddcbc"/>
+              <g stroke="#d3b98c" stroke-width="3" stroke-linecap="round" pointer-events="none">
+                <line x1="66" y1="34" x2="94" y2="37"/><line x1="66" y1="46" x2="94" y2="49"/><line x1="66" y1="58" x2="94" y2="61"/>
+                <line x1="66" y1="70" x2="94" y2="73"/><line x1="66" y1="82" x2="94" y2="85"/><line x1="66" y1="94" x2="94" y2="97"/>
+                <line x1="66" y1="106" x2="94" y2="109"/><line x1="66" y1="118" x2="94" y2="121"/><line x1="66" y1="130" x2="94" y2="133"/>
+                <line x1="66" y1="142" x2="94" y2="145"/><line x1="66" y1="154" x2="94" y2="157"/><line x1="66" y1="166" x2="94" y2="169"/>
+                <line x1="66" y1="178" x2="94" y2="181"/><line x1="66" y1="190" x2="94" y2="193"/><line x1="66" y1="202" x2="94" y2="205"/>
+                <line x1="66" y1="214" x2="94" y2="217"/><line x1="66" y1="226" x2="94" y2="229"/><line x1="66" y1="238" x2="94" y2="241"/>
+              </g>
+            </g>
+            <!-- 透明睡碗：挂在加长顶板下面，点一下小猫爬进去打盹 -->
+            <g class="tree-bed" onclick="napBowl()"><title>透明睡碗</title>
+              <path d="M44,28 L32,150 M112,28 L124,150" fill="none" stroke="#cbb48f" stroke-width="4" stroke-linecap="round" pointer-events="none"/>
+              <path d="M28,150 Q28,214 78,214 Q128,214 128,150 Z" fill="rgba(176,222,245,.32)" stroke="#c3e6f6" stroke-width="3"/>
+              <ellipse cx="78" cy="150" rx="50" ry="13" fill="rgba(206,236,250,.5)" stroke="#d6eefa" stroke-width="3"/>
+              <path d="M42,160 Q37,188 60,204" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="4" stroke-linecap="round" pointer-events="none"/>
+              <ellipse cx="104" cy="168" rx="5" ry="10" fill="rgba(255,255,255,.5)" pointer-events="none" transform="rotate(18 104 168)"/>
+              <g class="bed-zzz" fill="#6f9bd8" font-weight="900" pointer-events="none">
+                <text x="126" y="150" font-size="15" class="zz">z</text>
+                <text x="138" y="130" font-size="20" class="zz" style="animation-delay:.5s">z</text>
+                <text x="152" y="108" font-size="26" class="zz" style="animation-delay:1s">Z</text>
+              </g>
+            </g>
+          </svg>
+          <!-- 逗猫球：单独一层浮在猫前面（线放长猫够得到，且不被猫身体挡住点击） -->
+          <svg class="cat-toy" id="tree-toy" viewBox="0 0 60 250" onclick="batBall()"><title>逗猫球</title>
+            <line x1="12" y1="0" x2="12" y2="224" stroke="#b08b5e" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="12" cy="237" r="13" fill="#ff8fb1"/>
+            <circle cx="7" cy="232" r="4" fill="#fff" opacity=".75"/>
+          </svg>
+          <div class="cat-holder" id="cat-holder" onclick="toggleSleep()" title="点一下：睡觉 / 叫醒">
+            <div class="speech-bubble" id="speech-bubble">喵～</div>
+          </div>
+          <div class="cat-floor-mat" aria-hidden="true"></div>
+          <svg class="cat-bowl" id="cat-bowl" viewBox="0 0 90 64" title="猫碗">
+            <ellipse cx="45" cy="58" rx="33" ry="5" fill="rgba(0,0,0,.10)"/>
+            <path d="M12 28 Q45 44 78 28 L70 50 Q45 60 20 50 Z" fill="#ff9bb5"/>
+            <path d="M20 50 Q45 60 70 50 L68 55 Q45 63 22 55 Z" fill="#f27f9d"/>
+            <ellipse cx="45" cy="28" rx="34" ry="10" fill="#ffb3c6"/>
+            <ellipse cx="45" cy="28" rx="26" ry="7" fill="#f6e2d0"/>
+            <g fill="#fff" opacity=".85">
+              <circle cx="45" cy="42" r="3.4"/><circle cx="39.5" cy="38" r="1.7"/>
+              <circle cx="44" cy="36.4" r="1.7"/><circle cx="48.6" cy="37.2" r="1.7"/>
+            </g>
+            <g class="bowl-food" id="bowl-food"></g>
+          </svg>
+        </div>
+        <div class="cat-hint" id="cat-hint"></div>
+        <div class="cat-title"><span id="cat-name">小猫</span><span class="stage-chip" id="cat-stage-name">小奶猫</span></div>
+        <div class="cat-stats"><span>年龄 <strong id="cat-age">1个月</strong></span><span>体重 <strong id="cat-weight">0.50 kg</strong></span></div>
+        <div class="xp-wrap">
+          <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+          <div class="xp-text" id="xp-text"></div>
+        </div>
+        <div class="shop-row">
+          <h3 class="shop-label" id="shop-title">商店</h3>
+          <div class="food-grid" id="food-grid" role="group" aria-labelledby="shop-title"></div>
+        </div>
+      </div>
+      <div class="menu-col">
+        <button class="mode-btn" onclick="startRound('train')">
+          <span class="icon">🎯</span>
+          <span><span class="t">每日训练</span><br><span class="d">10 道题 · 全表混合 · 赚小鱼干</span></span>
+        </button>
+        <button class="mode-btn" onclick="startRound('challenge')">
+          <span class="icon">⚡</span>
+          <span><span class="t">限时挑战</span><br><span class="d">60 秒冲刺 · 最高纪录 <b id="best-score">0</b> 题</span></span>
+        </button>
+        <button class="mode-btn" onclick="startRound('review')">
+          <span class="icon">💪</span>
+          <span><span class="t">错题特训<span class="rev-badge" id="rev-count" style="display:none">0</span></span><br><span class="d">专门练习答错过的口诀</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- ═══ 小猫村（直接显示在主页白框下面） ═══ -->
+  <div class="home-village" id="home-village">
+    <div class="hv-head"><span class="hv-title">🏡 小猫村</span><span class="hv-tip" id="village-tip"></span>
+      <div class="village-pager" id="village-pager">
+        <button type="button" id="village-prev" onclick="changeVillagePage(-1)" aria-label="上一页猫咪">‹</button>
+        <span id="village-page-label"></span>
+        <button type="button" id="village-next" onclick="changeVillagePage(1)" aria-label="下一页猫咪">›</button>
+      </div>
+    </div>
+    <div class="village-scene" id="village-scene">
+     <div class="v-stage">
+      <button type="button" class="v-house" data-house="0" style="left:3%; bottom:42%; width:15%;" onclick="visitVillageHouse(0)" aria-label="猫窝，点击让小猫进去">
+        <svg viewBox="0 0 120 96" width="140">
+          <line x1="60" y1="26" x2="60" y2="8" stroke="#b97a3e" stroke-width="4"/>
+          <polygon points="60,6 80,11 60,17" fill="#ff6f91"/>
+          <path d="M10,90 Q10,26 60,26 Q110,26 110,90 Z" fill="#d99b58"/>
+          <ellipse cx="60" cy="66" rx="24" ry="20" fill="#4a3628"/>
+          <g class="house-door"><path d="M36 86 V66 Q36 46 60 46 Q84 46 84 66 V86 Z" fill="#b77b4c" stroke="#945c37" stroke-width="2"/>
+            <circle cx="76" cy="71" r="2.5" fill="#ffe0a0"/></g>
+          <path d="M12,90 L108,90" stroke="#b97a3e" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button type="button" class="v-house" data-house="4" style="right:5%; bottom:44%; width:11%;" onclick="visitVillageHouse(4)" aria-label="猫窝，点击让小猫进去">
+        <svg viewBox="0 0 120 96" width="105">
+          <path d="M10,90 Q10,26 60,26 Q110,26 110,90 Z" fill="#c98a4b"/>
+          <ellipse cx="60" cy="66" rx="24" ry="20" fill="#4a3628"/>
+          <g class="house-door"><path d="M36 86 V66 Q36 46 60 46 Q84 46 84 66 V86 Z" fill="#ae7045" stroke="#89542f" stroke-width="2"/>
+            <circle cx="76" cy="71" r="2.5" fill="#ffe0a0"/></g>
+          <path d="M12,90 L108,90" stroke="#a56b32" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button type="button" class="v-house" data-house="1" style="left:36%; bottom:44%; width:12%;" onclick="visitVillageHouse(1)" aria-label="猫窝，点击让小猫进去">
+        <svg viewBox="0 0 120 96">
+          <path d="M9,91 Q9,24 60,24 Q111,24 111,91 Z" fill="#ecb978"/>
+          <path d="M17,65 Q29,34 60,33 Q91,34 103,65" fill="none" stroke="#f9d9aa" stroke-width="5"/>
+          <ellipse cx="60" cy="68" rx="23" ry="19" fill="#5c4436"/>
+          <g class="house-door"><path d="M37 86 V67 Q37 49 60 49 Q83 49 83 67 V86 Z" fill="#bd8051" stroke="#98623c" stroke-width="2"/>
+            <circle cx="75" cy="72" r="2.5" fill="#ffe0a0"/></g>
+          <circle cx="27" cy="72" r="7" fill="#b9dbea" stroke="#8cb8c9" stroke-width="3"/>
+          <path d="M12,91 H108" stroke="#c38b50" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button type="button" class="v-house" data-house="2" style="left:55%; bottom:45%; width:12%;" onclick="visitVillageHouse(2)" aria-label="猫窝，点击让小猫进去">
+        <svg viewBox="0 0 120 96">
+          <path d="M9,91 Q9,24 60,24 Q111,24 111,91 Z" fill="#d99ea0"/>
+          <path d="M18,55 Q34,31 60,31 Q86,31 102,55" fill="none" stroke="#f3c4bd" stroke-width="5"/>
+          <ellipse cx="60" cy="68" rx="23" ry="19" fill="#5c4436"/>
+          <g class="house-door"><path d="M37 86 V67 Q37 49 60 49 Q83 49 83 67 V86 Z" fill="#bd797e" stroke="#975d62" stroke-width="2"/>
+            <circle cx="75" cy="72" r="2.5" fill="#ffe0a0"/></g>
+          <circle cx="91" cy="70" r="7" fill="#cce9e7" stroke="#93c4c3" stroke-width="3"/>
+          <path d="M12,91 H108" stroke="#b9797e" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button type="button" class="v-house" data-house="3" style="left:73%; bottom:41%; width:10%;" onclick="visitVillageHouse(3)" aria-label="猫窝，点击让小猫进去">
+        <svg viewBox="0 0 120 96">
+          <path d="M9,91 Q9,27 60,27 Q111,27 111,91 Z" fill="#b8a3d6"/>
+          <path d="M20,59 Q37,35 60,35 Q83,35 100,59" fill="none" stroke="#d9cbee" stroke-width="5"/>
+          <ellipse cx="60" cy="68" rx="22" ry="18" fill="#4a3d50"/>
+          <g class="house-door"><path d="M38 86 V67 Q38 50 60 50 Q82 50 82 67 V86 Z" fill="#9580b5" stroke="#765f98" stroke-width="2"/>
+            <circle cx="74" cy="72" r="2.5" fill="#ffe0a0"/></g>
+          <path d="M12,91 H108" stroke="#947db5" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="v-tree" style="left:24%; bottom:46%; width:11%;">
+        <svg viewBox="0 0 120 140" width="105">
+          <rect x="54" y="82" width="12" height="52" rx="6" fill="#9a6b45"/>
+          <circle cx="60" cy="52" r="33" fill="#7ec86a"/>
+          <circle cx="34" cy="72" r="22" fill="#8fd472"/>
+          <circle cx="86" cy="72" r="22" fill="#8fd472"/>
+          <circle cx="48" cy="44" r="5" fill="#ff9db4"/>
+          <circle cx="74" cy="58" r="5" fill="#ff9db4"/>
+          <circle cx="60" cy="72" r="5" fill="#ff9db4"/>
+        </svg>
+      </div>
+      <div class="v-tree" style="left:18%; bottom:55%; width:9%;" aria-hidden="true">
+        <svg viewBox="0 0 120 140">
+          <rect x="54" y="76" width="12" height="58" rx="5" fill="#93613e"/>
+          <circle cx="60" cy="49" r="34" fill="#65b965"/>
+          <circle cx="36" cy="69" r="24" fill="#77c86c"/>
+          <circle cx="84" cy="68" r="24" fill="#79c76a"/>
+          <g fill="#eb4f50"><circle cx="40" cy="48" r="8"/><circle cx="75" cy="38" r="8"/>
+            <circle cx="89" cy="72" r="8"/><circle cx="56" cy="79" r="8"/><circle cx="27" cy="72" r="7"/></g>
+          <g fill="#ffe4cd"><circle cx="37" cy="45" r="2"/><circle cx="72" cy="35" r="2"/></g>
+        </svg>
+      </div>
+      <div class="v-tree" style="left:46%; bottom:55%; width:9%;" aria-hidden="true">
+        <svg viewBox="0 0 120 140">
+          <rect x="54" y="77" width="12" height="57" rx="5" fill="#986845"/>
+          <circle cx="60" cy="47" r="35" fill="#76ba66"/>
+          <circle cx="34" cy="69" r="24" fill="#8bcc75"/>
+          <circle cx="86" cy="69" r="24" fill="#88c974"/>
+          <g fill="#f5a2ab" stroke="#e67e89" stroke-width="1.5">
+            <circle cx="43" cy="42" r="9"/><circle cx="76" cy="40" r="9"/><circle cx="89" cy="70" r="9"/>
+            <circle cx="52" cy="80" r="9"/><circle cx="27" cy="72" r="8"/>
+          </g>
+        </svg>
+      </div>
+      <div class="v-tree" style="left:65%; bottom:56%; width:9%;" aria-hidden="true">
+        <svg viewBox="0 0 120 140">
+          <rect x="54" y="76" width="12" height="58" rx="5" fill="#93613e"/>
+          <circle cx="60" cy="49" r="34" fill="#61b65e"/>
+          <circle cx="36" cy="69" r="24" fill="#78c96e"/>
+          <circle cx="84" cy="68" r="24" fill="#7dc96f"/>
+          <g fill="#df454b"><circle cx="40" cy="48" r="8"/><circle cx="75" cy="38" r="8"/>
+            <circle cx="89" cy="72" r="8"/><circle cx="56" cy="79" r="8"/><circle cx="27" cy="72" r="7"/></g>
+          <g fill="#ffe4cd"><circle cx="37" cy="45" r="2"/><circle cx="72" cy="35" r="2"/></g>
+        </svg>
+      </div>
+      <div class="v-tree" style="left:88%; bottom:61%; width:8%;" aria-hidden="true">
+        <svg viewBox="0 0 120 140">
+          <rect x="54" y="77" width="12" height="57" rx="5" fill="#986845"/>
+          <circle cx="60" cy="47" r="35" fill="#72b965"/>
+          <circle cx="34" cy="69" r="24" fill="#89c975"/>
+          <circle cx="86" cy="69" r="24" fill="#86c773"/>
+          <g fill="#f4a0a9" stroke="#e67e89" stroke-width="1.5">
+            <circle cx="43" cy="42" r="9"/><circle cx="76" cy="40" r="9"/><circle cx="89" cy="70" r="9"/>
+            <circle cx="52" cy="80" r="9"/><circle cx="27" cy="72" r="8"/>
+          </g>
+        </svg>
+      </div>
+      <button type="button" class="v-kiosk" onclick="openSnackShop()" aria-label="打开零食小卖部" title="零食小卖部">
+        <svg viewBox="0 0 128 112" aria-hidden="true">
+          <path d="M12 41 H116 V107 H12 Z" fill="#f6d4a6" stroke="#b9845e" stroke-width="3"/>
+          <rect x="22" y="8" width="84" height="30" rx="4" fill="#68a9a7" stroke="#4d8583" stroke-width="3"/>
+          <text x="64" y="29" text-anchor="middle" fill="#fff" font-size="18" font-weight="800">零食</text>
+          <path d="M8 40 H120 L114 61 H14 Z" fill="#fff1df" stroke="#c98d6b" stroke-width="3"/>
+          <path d="M14 41 H31 L30 59 H14 Z M48 41 H65 L65 59 H47 Z M82 41 H99 L100 59 H82 Z" fill="#e98677"/>
+          <rect x="23" y="67" width="82" height="32" rx="4" fill="#7db3b7" stroke="#568d91" stroke-width="3"/>
+          <rect x="21" y="88" width="86" height="11" rx="3" fill="#cb9467"/>
+          <path d="M16 107 H112" stroke="#9e6b4d" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div id="village-cats"></div>
+     </div>
+    </div>
+    <div class="village-neighborhood">
+      <h3>猫窝 · <span id="village-house-count">104</span> 座</h3>
+      <div class="village-house-grid" id="village-house-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 答题界面 ═══ -->
+<div class="screen" id="screen-game">
+  <div class="game-top">
+    <button class="btn ghost" onclick="quitRound()">← 退出</button>
+    <span class="progress-paws" id="progress-paws"></span>
+    <span class="game-fish">🐟 +<span id="round-fish">0</span></span>
+  </div>
+  <div class="timer-wrap" id="timer-wrap" style="display:none"><div class="timer-fill" id="timer-fill"></div></div>
+  <div style="text-align:center; height:34px;"><span class="combo-tag" id="combo-tag"></span></div>
+  <div class="card question-card" id="question-card">
+    <div class="q-text" id="q-text">7 <span class="op">×</span> 8 = ?</div>
+    <div class="encourage-tag" id="encourage-tag"></div>
+    <form class="answer-row" onsubmit="event.preventDefault(); submitAnswer();">
+      <input id="answerInput" inputmode="numeric" autocomplete="off" maxlength="2">
+      <button type="submit" class="btn blue">确定</button>
+    </form>
+    <div class="mini-cat-corner" id="mini-cat-corner"></div>
+  </div>
+</div>
+
+<!-- ═══ 结算界面 ═══ -->
+<div class="screen" id="screen-result">
+  <div class="card result-card" style="max-width:520px; margin:8vh auto;">
+    <div class="result-stars" id="result-stars">⭐⭐⭐</div>
+    <div class="result-big" id="result-big"></div>
+    <div class="result-sub" id="result-sub"></div>
+    <button class="btn" onclick="renderHome();showScreen('home')">回到乐园 🏠</button>
+    <button class="btn blue" id="again-btn" style="margin-left:10px;">再来一次 🔁</button>
+  </div>
+</div>
+
+<!-- ═══ 图鉴 ═══ -->
+<div class="screen" id="screen-gallery">
+  <h1 class="title">📖 猫咪图鉴</h1>
+  <p class="subtitle" id="gallery-tip"></p>
+  <div class="breed-tools">
+    <input class="breed-search" id="gallery-search" type="search" placeholder="搜索猫咪品种" aria-label="搜索图鉴品种" oninput="showGallery()">
+    <span class="breed-count" id="gallery-count"></span>
+  </div>
+  <div class="gallery-grid" id="gallery-grid"></div>
+  <div style="text-align:center; margin-top:24px;">
+    <button class="btn" onclick="renderHome();showScreen('home')">返回乐园 🏠</button>
+  </div>
+</div>
+
+<!-- ═══ 家长面板 ═══ -->
+<div class="screen" id="screen-parent">
+  <h1 class="title" style="font-size:30px;">👨‍👩‍👧 家长面板</h1>
+  <div class="card" style="max-width:720px; margin:0 auto;">
+    <div class="parent-section-title" style="margin-top:0;">口诀掌握热力图</div>
+    <p style="text-align:center; color:#999; font-size:13px;">绿色=熟练（≥90%） 黄色=一般（70~89%） 红色=薄弱（&lt;70%） 灰色=还没练到</p>
+    <div style="overflow-x:auto;"><table class="heatmap" id="heatmap"></table></div>
+    <div class="parent-section-title">最需要加强的口诀</div>
+    <div class="weak-list" id="weak-list"></div>
+    <div class="parent-section-title">每日平均反应速度（秒）</div>
+    <div id="speed-chart" style="text-align:center;"></div>
+    <div style="text-align:center; margin-top:26px;">
+      <button class="btn" onclick="renderHome();showScreen('home')">返回乐园 🏠</button>
+      <button class="btn ghost" onclick="resetAll()" style="margin-left:10px;">⚠️ 重置全部进度</button>
+    </div>
+  </div>
+</div>
+
+<!-- 口诀卡浮层 -->
+<div class="overlay" id="koujue-overlay">
+  <div class="koujue-card">
+    <div class="kj-label" id="kj-label">别着急，跟我念一遍口诀吧～</div>
+    <div class="kj-formula" id="kj-formula"></div>
+    <div class="kj-rhyme" id="kj-rhyme"></div>
+    <div class="kj-btns">
+      <button class="btn blue" onclick="speakKoujue()">🔊 再听一遍</button>
+      <button class="btn green" onclick="closeKoujue()">我记住啦！✊</button>
+    </div>
+  </div>
+</div>
+
+<!-- 进化浮层 -->
+<div class="overlay" id="evo-overlay">
+  <div class="evo-card">
+    <div class="evo-title" id="evo-title">🎉 进化啦！</div>
+    <div class="evo-glow" id="evo-cat"></div>
+    <div style="font-size:24px; font-weight:800; color:#5a4632; margin:12px 0 20px;" id="evo-text"></div>
+    <button class="btn" onclick="closeEvo()">太棒了！🎊</button>
+  </div>
+</div>
+
+<!-- 家长验证浮层 -->
+<div class="overlay" id="gate-overlay">
+  <div class="koujue-card" style="max-width:420px;">
+    <div class="kj-label">家长验证（防止小朋友误入）</div>
+    <div class="kj-formula" id="gate-q">13 × 12 = ?</div>
+    <form onsubmit="event.preventDefault(); checkGate();">
+      <div class="answer-row" style="margin-top:8px;">
+        <input id="gateInput" inputmode="numeric" style="width:160px; font-size:32px; font-weight:800; text-align:center; padding:6px; border:3px solid #ccc; border-radius:14px; outline:none; font-family:inherit;">
+      </div>
+      <div class="kj-btns" style="margin-top:18px;">
+        <button type="submit" class="btn blue">确定</button>
+        <button type="button" class="btn ghost" onclick="closeGate()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="snack-overlay" onclick="if(event.target===this) closeSnackShop()">
+  <div class="snack-panel" role="dialog" aria-modal="true" aria-labelledby="snack-title">
+    <div class="snack-head">
+      <h2 id="snack-title">零食小卖部</h2>
+      <button type="button" class="snack-close" onclick="closeSnackShop()" aria-label="关闭小卖部">×</button>
+    </div>
+    <div class="snack-balance">🐟 <span id="snack-fish-count">∞</span> 条小鱼干</div>
+    <div class="snack-recipient" id="snack-recipient"></div>
+    <div id="snack-options"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/cannon.min.js"></script>
+<script src="vendor/pathfinding-browser.min.js"></script>
+<script src="cat-navigation.js"></script>
+<script src="cat-home.js"></script>
+<script src="cat-world.js"></script>
+<script src="cloud-game.js"></script>
+<script>
+'use strict';
+/* ══════════════════ 猫咪定义 ══════════════════ */
+const BREEDS = {
+  tabby:   { name:'虎斑猫', desc:'威风凛凛的小老虎', base:'#c69063', belly:'#f3e3cf', stripe:'#8a5a34', pattern:'stripes', eye:'#4a9e5f', starter:true },
+  orange:  { name:'橘猫',   desc:'贪吃又可爱的大橘', base:'#f2a54a', belly:'#fbe3c0', stripe:'#d97f24', pattern:'stripes', eye:'#b57a1e', starter:true },
+  cow:     { name:'奶牛猫', desc:'精力旺盛的小猫', base:'#f5f2ec', belly:'#ffffff', stripe:'#3b3b46', pattern:'cow',    eye:'#4a9e5f', starter:true },
+  calico:  { name:'三花猫', desc:'幸运的三色小猫', base:'#f5f2ec', belly:'#ffffff', stripe:'#3b3b46', pattern:'calico', eye:'#c8791f' },
+  blue:    { name:'蓝猫',   desc:'圆滚滚的绅士', base:'#93a7bd', belly:'#d7e0ea', stripe:'#7a8fa6', pattern:'solid',  eye:'#d98e2b' },
+  black:   { name:'黑猫',   desc:'神秘的小影子', base:'#3b3b46', belly:'#4a4a56', stripe:'#2b2b34', pattern:'solid',  eye:'#e8c534' },
+  white:   { name:'白猫',   desc:'雪白的小天使', base:'#f7f4ef', belly:'#ffffff', stripe:'#e8e2d8', pattern:'solid',  eye:'hetero' },
+  siamese: { name:'暹罗猫', english:'Siamese', desc:'蓝眼睛的小贵族', base:'#efe2c8', belly:'#f8f0e0', stripe:'#6b4a35', pattern:'points', eye:'#4a7fd6' },
+};
+// TICA 品种目录（含单列的长短毛、尾型等变体）：https://tica.org/ticas-breeds/browse-all-breeds/
+const COATS = {
+  brown:  ['#ba9069','#ead5b9','#79573d','stripes','#6a9a4d'],
+  gold:   ['#d7a35a','#f3ddbb','#966437','stripes','#91a34e'],
+  silver: ['#c4c8cb','#f0efeb','#72777c','stripes','#5c9b76'],
+  ginger: ['#eaa95e','#f6dfc4','#b97938','stripes','#bc8a3f'],
+  blue:   ['#8e9fae','#cbd5dc','#687b8d','solid','#5ca184'],
+  black:  ['#373840','#64636d','#25252c','solid','#d6ad53'],
+  white:  ['#f2f0e9','#ffffff','#e3ded5','solid','#61a6b8'],
+  cream:  ['#ead8b9','#faf0db','#ba9b70','solid','#9b8745'],
+  point:  ['#e8dbc5','#f6eddc','#654a3f','points','#5489c5'],
+  cocoa:  ['#796054','#c0a18b','#4d3936','solid','#c5a25d'],
+  spots:  ['#d4ae78','#efd9b6','#66503c','spots','#6e9f62'],
+  smoke:  ['#77787d','#cbc9cb','#46474d','solid','#d5a958'],
+  red:    ['#d28d60','#f1d5ba','#995c3d','stripes','#b99042'],
+  skin:   ['#d9aaa1','#eac8be','#b9827d','solid','#74a3ad'],
+};
+const EXTRA_BREEDS = [
+  ['abyssinian','阿比西尼亚猫','Abyssinian','暖棕色的灵巧小猫','gold'],
+  ['american-bobtail','美国短尾猫','American Bobtail','短尾巴，爱探险','brown','bobtail'],
+  ['american-bobtail-shorthair','美国短毛短尾猫','American Bobtail Shorthair','短毛和小短尾','silver','bobtail'],
+  ['american-curl','美国卷耳猫','American Curl','耳尖向后卷','cream','curl'],
+  ['american-curl-longhair','美国长毛卷耳猫','American Curl Longhair','长毛和卷耳朵','ginger','curl,longhair'],
+  ['american-shorthair','美国短毛猫','American Shorthair','经典银色虎斑','silver'],
+  ['american-wirehair','美国刚毛猫','American Wirehair','毛发微微卷曲','ginger','curly'],
+  ['australian-mist','澳大利亚雾猫','Australian Mist','雾色斑点外套','spots'],
+  ['balinese','巴厘猫','Balinese','长毛的重点色猫','point','longhair'],
+  ['bengal','孟加拉豹猫','Bengal','金色豹纹小猫','spots'],
+  ['bengal-longhair','孟加拉长毛猫','Bengal Longhair','长毛豹纹外套','spots','longhair'],
+  ['birman','伯曼猫','Birman','蓝眼睛和白手套','point','mittens,longhair'],
+  ['bombay','孟买猫','Bombay','乌亮的小黑猫','black'],
+  ['british-longhair','英国长毛猫','British Longhair','蓬松的圆脸猫','blue','longhair'],
+  ['british-shorthair','英国短毛猫','British Shorthair','圆脸的蓝灰猫','blue'],
+  ['burmese','缅甸猫','Burmese','巧克力色的伙伴','cocoa'],
+  ['burmilla','波米拉猫','Burmilla','银色渐层外套','silver'],
+  ['burmilla-longhair','长毛波米拉猫','Burmilla Longhair','蓬松的银色渐层','silver','longhair'],
+  ['chartreux','沙特尔猫','Chartreux','蓝灰毛和金眼睛','smoke'],
+  ['chausie','肖西猫','Chausie','野性十足的大耳猫','gold','bigears'],
+  ['cherubim','Cherubim 猫','Cherubim','柔软的长毛伙伴','point','longhair,mittens'],
+  ['cornish-rex','柯尼斯卷毛猫','Cornish Rex','卷曲的短毛','cream','curly,bigears'],
+  ['cymric','威尔士猫','Cymric','没有尾巴的长毛猫','ginger','tailless,longhair'],
+  ['cymric-tailed','有尾威尔士猫','Cymric Tailed','蓬松的尾巴','ginger','longhair'],
+  ['devon-rex','德文卷毛猫','Devon Rex','大耳朵，卷卷毛','cream','curly,bigears'],
+  ['donskoy','顿斯科伊无毛猫','Donskoy','粉色皮肤的无毛猫','skin','hairless'],
+  ['egyptian-mau','埃及猫','Egyptian Mau','天然斑点花纹','spots'],
+  ['exotic-shorthair','异国短毛猫','Exotic Shorthair','圆脸短毛小猫','cream'],
+  ['havana','哈瓦那棕猫','Havana','浓郁的棕色外套','cocoa'],
+  ['highlander','高地猫','Highlander','卷耳和小短尾','brown','curl,bobtail,longhair'],
+  ['highlander-shorthair','短毛高地猫','Highlander Shorthair','卷耳短毛小猫','gold','curl,bobtail'],
+  ['himalayan','喜马拉雅猫','Himalayan','蓬松的重点色猫','point','longhair'],
+  ['japanese-bobtail','日本短尾猫','Japanese Bobtail','小绒球尾巴','white','bobtail'],
+  ['japanese-bobtail-longhair','日本长毛短尾猫','Japanese Bobtail Longhair','长毛小绒球尾巴','ginger','bobtail,longhair'],
+  ['khaomanee','考曼尼猫','Khaomanee','雪白的宝石眼','white'],
+  ['korat','科拉特猫','Korat','银蓝色的绿眼猫','blue'],
+  ['kurilian-bobtail','库里尔短尾猫','Kurilian Bobtail','短尾巴，身手敏捷','brown','bobtail'],
+  ['kurilian-bobtail-longhair','库里尔长毛短尾猫','Kurilian Bobtail Longhair','长毛和绒球尾巴','silver','bobtail,longhair'],
+  ['laperm','拉邦猫','LaPerm','蓬松的卷毛','ginger','curly,longhair'],
+  ['laperm-shorthair','短毛拉邦猫','LaPerm Shorthair','短短的卷毛','cream','curly'],
+  ['lykoi','狼人猫','Lykoi','灰黑色的稀疏毛发','smoke','hairless'],
+  ['maine-coon','缅因猫','Maine Coon','大耳朵和长毛','brown','bigears,longhair'],
+  ['maine-coon-polydactyl','多趾缅因猫','Maine Coon Polydactyl','宽宽的多趾爪子','ginger','bigears,longhair,polydactyl'],
+  ['manx','马恩岛猫','Manx','没有尾巴的小猫','ginger','tailless'],
+  ['manx-tailed','有尾马恩岛猫','Manx Tailed','圆滚滚的有尾猫','brown'],
+  ['minuet','米努特猫','Minuet','短腿圆脸小猫','cream','shortlegs'],
+  ['minuet-longhair','长毛米努特猫','Minuet Longhair','短腿蓬松小猫','cream','shortlegs,longhair'],
+  ['minuet-talls','高腿米努特猫','Minuet Talls','圆脸长腿小猫','ginger'],
+  ['minuet-talls-longhair','高腿长毛米努特猫','Minuet Talls Longhair','长腿和蓬松毛发','ginger','longhair'],
+  ['munchkin','曼基康猫','Munchkin','短腿的灵巧小猫','brown','shortlegs'],
+  ['munchkin-longhair','长毛曼基康猫','Munchkin Longhair','短腿长毛小猫','silver','shortlegs,longhair'],
+  ['nebelung','尼伯龙猫','Nebelung','蓝灰色的长毛','blue','longhair'],
+  ['norwegian-forest','挪威森林猫','Norwegian Forest','厚厚的森林外套','brown','longhair,bigears'],
+  ['ocicat','奥西猫','Ocicat','有斑点的小猫','spots'],
+  ['oriental-longhair','东方长毛猫','Oriental Longhair','修长的大耳猫','cocoa','longhair,bigears'],
+  ['oriental-shorthair','东方短毛猫','Oriental Shorthair','修长的短毛大耳猫','cocoa','bigears'],
+  ['persian','波斯猫','Persian','蓬松的圆脸猫','white','longhair'],
+  ['peterbald','彼得秃猫','Peterbald','细长的无毛猫','skin','hairless,bigears'],
+  ['pixiebob','皮克西短尾猫','Pixiebob','虎斑短尾小猫','brown','bobtail'],
+  ['pixiebob-longhair','长毛皮克西短尾猫','Pixiebob Longhair','长毛虎斑短尾猫','brown','bobtail,longhair'],
+  ['ragdoll','布偶猫','Ragdoll','蓝眼睛的长毛猫','point','longhair,mittens'],
+  ['russian-blue','俄罗斯蓝猫','Russian Blue','银蓝色的绿眼猫','blue'],
+  ['savannah','萨凡纳猫','Savannah','斑点和大耳朵','spots','bigears'],
+  ['scottish-fold','苏格兰折耳猫','Scottish Fold','向前折的小耳朵','silver','fold'],
+  ['scottish-fold-longhair','长毛苏格兰折耳猫','Scottish Fold Longhair','长毛和折耳朵','silver','fold,longhair'],
+  ['scottish-straight','苏格兰立耳猫','Scottish Straight','圆脸立耳小猫','cream'],
+  ['scottish-straight-longhair','长毛苏格兰立耳猫','Scottish Straight Longhair','长毛立耳小猫','cream','longhair'],
+  ['selkirk-rex','塞尔凯克卷毛猫','Selkirk Rex','卷卷的绒毛','smoke','curly'],
+  ['selkirk-rex-longhair','长毛塞尔凯克卷毛猫','Selkirk Rex Longhair','长长的卷毛','smoke','curly,longhair'],
+  ['siberian','西伯利亚猫','Siberian','厚厚的长毛外套','ginger','longhair'],
+  ['singapura','新加坡猫','Singapura','小巧的浅棕猫','cream'],
+  ['snowshoe','雪鞋猫','Snowshoe','蓝眼睛和白脚丫','point','mittens'],
+  ['somali','索马里猫','Somali','红棕色长毛猫','red','longhair,bigears'],
+  ['sphynx','斯芬克斯猫','Sphynx','没有毛的粉色猫','skin','hairless,bigears'],
+  ['tennessee-rex','田纳西卷毛猫','Tennessee Rex','闪亮的卷毛','red','curly'],
+  ['thai','泰国猫','Thai','蓝眼睛的重点色猫','point'],
+  ['tonkinese','东奇尼猫','Tonkinese','柔和的棕色外套','cocoa'],
+  ['toyger','玩具虎猫','Toyger','像小老虎的条纹','gold'],
+  ['turkish-angora','土耳其安哥拉猫','Turkish Angora','轻盈的白色长毛','white','longhair'],
+  ['turkish-van','土耳其梵猫','Turkish Van','白毛和有色尾巴','white','longhair'],
+];
+for (const [id, name, english, desc, coat, features = ''] of EXTRA_BREEDS) {
+  const [base, belly, stripe, pattern, eye] = COATS[coat];
+  BREEDS[id] = { name, english, desc, base, belly, stripe, pattern, eye, features };
+}
+const BREED_ORDER = ['tabby','orange','cow','calico','blue','black','white','siamese',
+  ...EXTRA_BREEDS.map(b => b[0])];
+const STAGE_NAMES = ['小奶猫','幼猫','少年猫','大猫咪','✨闪光猫'];
+const STAGE_XP = [0, 30, 80, 150, 250];   // 累计经验门槛
+const STAGE_SCALE = [0.42, 0.56, 0.7, 0.85, 1.0];
+function catGrowth(cat) {
+  const progress = Math.max(0, Math.min(1, (Number(cat.xp) || 0) / STAGE_XP[MAX_STAGE]));
+  return {
+    ageMonths: Number((1 + 23 * progress).toFixed(1)),
+    weightKg: (0.5 + 4.5 * progress).toFixed(2),
+  };
+}
+const FOODS = {
+  fish:   { name:'小鱼', icon:'🐟', cost:3, xp:10 },
+  can:    { name:'罐头', icon:'🥫', cost:5, xp:18 },
+  kibble: { name:'猫粮', icon:'🥣', cost:4, xp:14 },
+  freeze: { name:'冻干', icon:'🍖', cost:7, xp:26 },
+};
+const SNACKS = {
+  chicken: { name:'鸡肉条', icon:'🍗', cost:2, xp:5 },
+  fishBite: { name:'鱼肉粒', icon:'🐟', cost:3, xp:8 },
+  catnip: { name:'猫薄荷饼', icon:'🌿', cost:4, xp:12 },
+};
+const FEED_ITEMS = { ...FOODS, ...SNACKS };
+const FOOD_BOWL = {
+  fish: '<ellipse cx="40" cy="27" rx="9" ry="3.6" fill="#ffb877" transform="rotate(-8 40 27)"/><path d="M31 27 l-5 -3.4 v6.8 z" fill="#ff9e4d"/><circle cx="45" cy="26" r="1.1" fill="#7a5236"/><ellipse cx="52" cy="29" rx="7" ry="2.9" fill="#ffc79a" transform="rotate(9 52 29)"/>',
+  can: '<path d="M26 30 Q28 19 43 22 Q57 18 63 29 Z" fill="#c47b6a"/><ellipse cx="44" cy="26" rx="14" ry="4" fill="#d99a84"/><circle cx="37" cy="25" r="2" fill="#e9b6a0"/><circle cx="52" cy="27" r="2" fill="#e9b6a0"/>',
+  kibble: '<g fill="#a66c3d"><circle cx="32" cy="27" r="3"/><circle cx="40" cy="24" r="3.5"/><circle cx="48" cy="27" r="3"/><circle cx="56" cy="24" r="3"/><circle cx="36" cy="31" r="3"/><circle cx="45" cy="31" r="3.5"/><circle cx="54" cy="31" r="3"/></g>',
+  freeze: '<g fill="#d9a66c" stroke="#bd8650" stroke-width="1"><rect x="29" y="23" width="9" height="8" rx="2" transform="rotate(-12 33 27)"/><rect x="40" y="20" width="9" height="8" rx="2" transform="rotate(9 44 24)"/><rect x="51" y="24" width="9" height="8" rx="2" transform="rotate(-7 55 28)"/><rect x="38" y="27" width="9" height="7" rx="2"/></g>',
+  chicken: '<g fill="#d39666"><path d="M27 29 Q30 20 40 22 L49 27 Q43 34 33 33 Z"/><path d="M45 25 Q51 20 61 24 L64 31 Q54 35 47 31 Z"/></g>',
+  fishBite: '<g fill="#e8ad78"><circle cx="33" cy="27" r="5"/><circle cx="44" cy="24" r="5"/><circle cx="55" cy="28" r="5"/><circle cx="40" cy="31" r="4"/></g>',
+  catnip: '<g fill="#96bd79"><ellipse cx="34" cy="27" rx="6" ry="4"/><ellipse cx="46" cy="25" rx="7" ry="4"/><ellipse cx="57" cy="28" rx="6" ry="4"/></g>',
+};
+const MAX_STAGE = 4;
+
+let uidCounter = 0;
+/* 团子猫：视口 0 0 240 240，圆滚滚一坨，脚底对齐 y≈222 */
+const BLOB_PATH = 'M32,180 Q32,70 120,70 Q208,70 208,180 Q208,222 120,222 Q32,222 32,180 Z';
+/* 性别装饰：女孩戴耳朵上的粉蝴蝶结，男孩戴脖子上的蓝领结。
+   长到第 3 阶段镶一颗金宝石 —— 原来「进化送蝴蝶结」的奖励换成了这个 */
+function catAccessory(sex, stage) {
+  if (!sex) return '';
+  const gem = stage >= 3 ? '<circle r="2" fill="#ffe680"/>' : '';
+  if (sex === 'girl') return `
+      <g transform="translate(180,34) rotate(18)">
+        <path d="M0,0 L-16,-9 L-16,9 Z" fill="#ff6f91"/>
+        <path d="M0,0 L16,-9 L16,9 Z" fill="#ff6f91"/>
+        <circle r="4.5" fill="#e84a70"/>${gem}
+      </g>`;
+  // 领结要坐在项圈上、而不是盖住它，两侧得留出红带子露出来
+  return `
+      <g transform="translate(120,165) scale(.85)">
+        <path d="M0,0 L-14,-8 L-14,8 Z" fill="#4a90d9"/>
+        <path d="M0,0 L14,-8 L14,8 Z" fill="#4a90d9"/>
+        <circle r="4.2" fill="#2f6fb5"/>${gem}
+      </g>`;
+}
+function catInner(breed, stage, uid, asleep, interactive, sex) {
+  const B = BREEDS[breed];
+  const has = feature => (B.features || '').split(',').includes(feature);
+  const dark = B.base === COATS.black[0] || breed === 'black';
+  const whisker = dark ? 'rgba(255,255,255,.5)' : 'rgba(0,0,0,.16)';
+  const toe = dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.13)';
+  const isPoint = B.pattern === 'points';
+  const pointCol = isPoint ? B.stripe : B.base;
+  const earL = has('bigears') ? '66,85 48,24 105,62' : '66,80 58,38 100,60';
+  const earR = has('bigears') ? '174,85 192,24 135,62' : '174,80 182,38 140,60';
+  let pattern = '';
+  if (B.pattern === 'stripes') {
+    pattern = `
+      <g clip-path="url(#clip${uid})" fill="${B.stripe}">
+        <path d="M98,72 q5,13 0,24 l8,0 q5,-12 0,-24 z"/>
+        <path d="M114,68 q5,14 0,26 l8,0 q5,-13 0,-26 z"/>
+        <path d="M130,72 q5,13 0,24 l8,0 q5,-12 0,-24 z"/>
+        <path d="M34,128 q15,5 18,21 l-9,5 q-5,-14 -15,-19 z"/>
+        <path d="M206,128 q-15,5 -18,21 l9,5 q5,-14 15,-19 z"/>
+        <path d="M40,172 q13,7 14,24 l-11,2 q-1,-15 -9,-20 z"/>
+        <path d="M200,172 q-13,7 -14,24 l11,2 q1,-15 9,-20 z"/>
+      </g>`;
+  } else if (B.pattern === 'cow') {
+    pattern = `
+      <g clip-path="url(#clip${uid})" fill="${B.stripe}">
+        <ellipse cx="152" cy="108" rx="26" ry="23"/>
+        <ellipse cx="76" cy="190" rx="26" ry="22"/>
+        <polygon points="${earR}"/>
+      </g>`;
+  } else if (B.pattern === 'spots') {
+    pattern = `
+      <g clip-path="url(#clip${uid})" fill="${B.stripe}">
+        <ellipse cx="74" cy="101" rx="10" ry="7"/><ellipse cx="124" cy="86" rx="8" ry="6"/>
+        <ellipse cx="165" cy="103" rx="11" ry="7"/><ellipse cx="58" cy="153" rx="9" ry="7"/>
+        <ellipse cx="188" cy="153" rx="9" ry="6"/><ellipse cx="72" cy="188" rx="12" ry="7"/>
+        <ellipse cx="166" cy="185" rx="10" ry="7"/>
+      </g>`;
+  } else if (B.pattern === 'calico') {
+    pattern = `
+      <g clip-path="url(#clip${uid})">
+        <ellipse cx="84" cy="98" rx="22" ry="20" fill="#f2a54a"/>
+        <ellipse cx="156" cy="104" rx="18" ry="16" fill="#3b3b46"/>
+        <ellipse cx="162" cy="190" rx="23" ry="19" fill="#f2a54a"/>
+        <polygon points="${earL}" fill="#3b3b46"/>
+      </g>`;
+  } else if (isPoint) {
+    pattern = `
+      <g clip-path="url(#clip${uid})" fill="${B.stripe}">
+        <ellipse cx="120" cy="134" rx="24" ry="14" opacity=".85"/>
+      </g>`;
+  }
+  const eyeL = B.eye === 'hetero' ? '#4a7fd6' : B.eye;
+  const eyeR = B.eye === 'hetero' ? '#c8791f' : B.eye;
+  const lineCol = dark ? '#d8d8e8' : '#3a2e22';
+  const eyesOpen = `
+      <circle cx="86" cy="124" r="8" fill="${eyeL}"/>
+      <circle cx="154" cy="124" r="8" fill="${eyeR}"/>
+      <ellipse cx="86" cy="125" rx="4" ry="5.5" fill="#1d1d26"/>
+      <ellipse cx="154" cy="125" rx="4" ry="5.5" fill="#1d1d26"/>
+      <circle cx="88.5" cy="120.5" r="2.2" fill="#fff"/>
+      <circle cx="156.5" cy="120.5" r="2.2" fill="#fff"/>${sex === 'girl' ? `
+      <g stroke="${lineCol}" stroke-width="2.2" stroke-linecap="round">
+        <line x1="79" y1="118" x2="74" y2="114"/><line x1="83" y1="115" x2="80" y2="110"/>
+        <line x1="161" y1="118" x2="166" y2="114"/><line x1="157" y1="115" x2="160" y2="110"/>
+      </g>` : ''}`;
+  const eyesSquint = `
+      <g fill="none" stroke="${lineCol}" stroke-width="4.5" stroke-linecap="round">
+        <path d="M76,126 q10,-10 20,0"/>
+        <path d="M144,126 q10,-10 20,0"/>
+      </g>`;
+  const eyes = asleep ? `
+      <g fill="none" stroke="${lineCol}" stroke-width="4" stroke-linecap="round">
+        <path d="M76,122 q10,9 20,0"/>
+        <path d="M144,122 q10,9 20,0"/>
+      </g>` : (interactive ? `
+      <g class="eyes-open">${eyesOpen}</g>
+      <g class="eyes-squint">${eyesSquint}</g>` : eyesOpen);
+  // 男孩的领结要占脖子中间的位置，所以把铃铛让出来
+  const collar = stage >= 2 ? `
+      <path d="M100,158 q20,10 40,0" fill="none" stroke="#e0484f" stroke-width="7" stroke-linecap="round"/>
+      ${sex === 'boy' ? '' : '<circle cx="120" cy="167" r="5.5" fill="#ffd24a" stroke="#d8a520" stroke-width="1.5"/>'}` : '';
+  const bow = catAccessory(sex, stage);
+  const star = 'M0,-9 L2.4,-2.8 L9,-2.8 L3.8,1.4 L5.8,8 L0,4 L-5.8,8 L-3.8,1.4 L-9,-2.8 L-2.4,-2.8 Z';
+  const sparkles = stage >= 4 ? `
+      <g fill="#ffd24a">
+        <path d="${star}" transform="translate(26,64)" class="twinkle"/>
+        <path d="${star}" transform="translate(214,84) scale(.8)" class="twinkle" style="animation-delay:.4s"/>
+        <path d="${star}" transform="translate(22,156) scale(.7)" class="twinkle" style="animation-delay:.8s"/>
+        <path d="${star}" transform="translate(218,168) scale(.9)" class="twinkle" style="animation-delay:.2s"/>
+        <path d="${star}" transform="translate(120,22) scale(1.1)" class="twinkle" style="animation-delay:.6s"/>
+      </g>` : '';
+  const ears = has('fold')
+    ? `<path d="M65 76 Q53 61 60 55 L94 68 Z" fill="${B.base}"/><path d="M175 76 Q187 61 180 55 L146 68 Z" fill="${B.base}"/>`
+    : `<polygon points="${earL}" fill="${isPoint ? B.stripe : B.base}"/>
+       <polygon points="${earR}" fill="${isPoint ? B.stripe : B.base}"/>`;
+  const tail = has('tailless') ? '' : has('bobtail')
+    ? `<ellipse cx="209" cy="189" rx="17" ry="14" fill="${pointCol}"/>`
+    : `<path d="M206,182 q32,-8 26,-40" fill="none" stroke="${pointCol}" stroke-width="18" stroke-linecap="round"/>`;
+  return `
+      ${sparkles}
+      ${tail}
+      ${has('longhair') ? `<path d="M42 124 L31 117 L42 145 L27 152 L42 169 L29 186 L48 207 Q120 239 192 207 L211 186 L198 169 L213 152 L198 145 L209 117 L198 124 Z" fill="${B.base}"/>` : ''}
+      ${ears}
+      ${has('fold') ? '' : has('bigears')
+        ? `<polygon points="70,73 56,36 94,61" fill="#ffb6c1"/><polygon points="170,73 184,36 146,61" fill="#ffb6c1"/>`
+        : `<polygon points="70,72 64,46 90,60" fill="#ffb6c1"/><polygon points="170,72 176,46 150,60" fill="#ffb6c1"/>`}
+      <path d="${BLOB_PATH}" fill="${B.base}"/>
+      <ellipse cx="120" cy="192" rx="40" ry="24" fill="${B.belly}"/>
+      ${pattern}
+      ${has('curl') ? `<path d="M59 46 q-13 -9 -9 -18 M181 46 q13 -9 9 -18" fill="none" stroke="${B.stripe}" stroke-width="5" stroke-linecap="round"/>` : ''}
+      ${has('curly') ? `<g fill="none" stroke="${B.stripe}" stroke-width="2.5" opacity=".45"><path d="M53 105 q8 -9 16 0 t16 0"/><path d="M153 89 q8 -9 16 0 t16 0"/><path d="M40 184 q8 -9 16 0 t16 0"/></g>` : ''}
+      ${has('hairless') ? `<g fill="none" stroke="${B.stripe}" stroke-width="2" opacity=".5"><path d="M101 87 q19 8 38 0 M106 94 q14 7 28 0 M45 170 q9 7 18 0 M177 170 q9 7 18 0"/></g>` : ''}
+      <g transform="translate(0,${has('shortlegs') ? -6 : 0})">
+        <ellipse cx="94" cy="220" rx="${has('polydactyl') ? 20 : 16}" ry="8.5" fill="${has('mittens') ? '#ffffff' : pointCol}"/>
+        <ellipse cx="146" cy="220" rx="${has('polydactyl') ? 20 : 16}" ry="8.5" fill="${has('mittens') ? '#ffffff' : pointCol}"/>
+      <g stroke="${toe}" stroke-width="2" stroke-linecap="round">
+        <line x1="89" y1="215" x2="89" y2="222"/><line x1="97" y1="216" x2="97" y2="223"/>
+        <line x1="141" y1="215" x2="141" y2="222"/><line x1="149" y1="216" x2="149" y2="223"/>
+      </g>
+      </g>
+      ${collar}
+      ${eyes}
+      <circle cx="68" cy="146" r="8" fill="#ffb6c1" opacity=".55"/>
+      <circle cx="172" cy="146" r="8" fill="#ffb6c1" opacity=".55"/>
+      <polygon points="116,132 124,132 120,137" fill="#ff8fa3"/>
+      <path d="M120,137 q0,5 -6,6 M120,137 q0,5 6,6" fill="none" stroke="${dark ? '#999' : '#8a6a4a'}" stroke-width="2.5" stroke-linecap="round"/>
+      <g stroke="${whisker}" stroke-width="2.5" stroke-linecap="round">
+        <line x1="40" y1="118" x2="68" y2="124"/><line x1="38" y1="132" x2="68" y2="133"/><line x1="40" y1="146" x2="68" y2="141"/>
+        <line x1="200" y1="118" x2="172" y2="124"/><line x1="202" y1="132" x2="172" y2="133"/><line x1="200" y1="146" x2="172" y2="141"/>
+      </g>
+      ${bow}
+      ${interactive && !asleep ? `
+      <ellipse class="pet-zone" cx="120" cy="90" rx="66" ry="28" fill="transparent"
+        onmouseenter="petStart()" onmouseleave="petEnd()" onclick="event.stopPropagation();petPat()"/>
+      <ellipse class="pet-zone" cx="120" cy="146" rx="36" ry="17" fill="transparent"
+        onmouseenter="petStart()" onmouseleave="petEnd()" onclick="event.stopPropagation();petPat()"/>` : ''}`;
+}
+function catClipDefs(uid) {
+  return `
+    <defs>
+      <clipPath id="clip${uid}">
+        <path d="${BLOB_PATH}"/>
+        <polygon points="66,80 58,38 100,60"/>
+        <polygon points="174,80 182,38 140,60"/>
+      </clipPath>
+    </defs>`;
+}
+function catSVG(breed, stage, size, asleep, interactive, sex) {
+  const uid = 'c' + (uidCounter++);
+  const sc = STAGE_SCALE[stage];
+  const glow = stage >= 4 ? 'filter:drop-shadow(0 0 12px rgba(255,210,74,.9));' : '';
+  return `
+  <svg width="${size}" height="${size}" viewBox="0 0 240 240" style="${glow}">
+    ${catClipDefs(uid)}
+    <g transform="translate(120,222) scale(${sc}) translate(-120,-222)">
+      ${catInner(breed, stage, uid, asleep, interactive, sex)}
+    </g>
+  </svg>`;
+}
+/* 圆顶封闭式猫窝：里面就是醒着那只「团子猫」闭着眼缩在洞里 —— 同一套画法，
+   不再另画一颗猫头。NEST_FIT 是塞进洞口的上限，再大耳朵尖会被洞口切掉。
+   窝是固定大小的家具，猫却要从 42% 长到 100%，直接按比例缩小奶猫会成一个点、
+   窝里空一大块，所以这里把小猫那头往上抬，只保留一点点「越长越撑满窝」的变化 */
+const NEST_FIT = 0.45;
+function sleepSceneSVG(breed, stage, width, sex) {
+  const uid = 'c' + (uidCounter++);
+  const sc = NEST_FIT * (0.55 + 0.45 * STAGE_SCALE[stage]);
+  return `
+  <svg width="${width}" height="${Math.round(width * 250 / 300)}" viewBox="0 0 300 250">
+    <defs>
+      <clipPath id="open${uid}"><ellipse cx="150" cy="176" rx="62" ry="52"/></clipPath>
+    </defs>
+    <ellipse cx="150" cy="231" rx="120" ry="13" fill="rgba(80,60,30,.12)"/>
+    <path d="M30,230 Q30,95 150,95 Q270,95 270,230 Z" fill="#d99b58" style="cursor:pointer"
+      onclick="event.stopPropagation();sayGoodnight()"/>
+    <path d="M52,208 Q52,124 150,124 M248,208 Q248,124 150,124" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="6" stroke-linecap="round" pointer-events="none"/>
+    <ellipse cx="150" cy="176" rx="62" ry="52" fill="#4a3628"/>
+    <g clip-path="url(#open${uid})">
+      <ellipse cx="150" cy="212" rx="58" ry="16" fill="#f0dcba"/>
+      <g transform="translate(150,214) scale(${sc}) translate(-120,-222)">
+        ${catClipDefs(uid)}
+        ${catInner(breed, stage, uid, true, false, sex)}
+      </g>
+    </g>
+    <ellipse cx="150" cy="176" rx="62" ry="52" fill="none" stroke="#b97a3e" stroke-width="7" pointer-events="none"/>
+    <path d="M30,230 Q30,95 150,95 Q270,95 270,230 Z" fill="none" stroke="#c98a4b" stroke-width="4" pointer-events="none"/>
+    <text id="gn-text" class="gn" x="150" y="122" text-anchor="middle" font-size="27" font-weight="900" fill="#fff8ec">晚 安</text>
+    <g fill="#6f9bd8" font-weight="900" pointer-events="none">
+      <text x="222" y="88" font-size="20" class="zz">z</text>
+      <text x="240" y="64" font-size="27" class="zz" style="animation-delay:.6s">z</text>
+      <text x="258" y="38" font-size="34" class="zz" style="animation-delay:1.2s">Z</text>
+    </g>
+  </svg>`;
+}
+
+/* ══════════════════ 口诀 ══════════════════ */
+const CN = ['零','一','二','三','四','五','六','七','八','九'];
+function cnNum(n) {
+  if (n < 10) return CN[n];
+  if (n === 10) return '十';
+  if (n < 20) return '十' + CN[n % 10];
+  return CN[Math.floor(n / 10)] + '十' + (n % 10 ? CN[n % 10] : '');
+}
+function kouJue(a, b) {
+  const [x, y] = a <= b ? [a, b] : [b, a];
+  const p = x * y;
+  const prod = p === 10 ? '一十' : cnNum(p);
+  return `${CN[x]}${CN[y]}${p < 10 ? '得' : ''}${prod}`;
+}
+function factKey(a, b) { const [x, y] = a <= b ? [a, b] : [b, a]; return x + 'x' + y; }
+const ALL_FACTS = [];
+for (let a = 2; a <= 9; a++) for (let b = a; b <= 9; b++) ALL_FACTS.push([a, b]);
+
+/* ══════════════════ 存档 ══════════════════ */
+const SAVE_KEY = 'multCatGame_v1';
+let UNLIMITED_FISH = true;
+let state = {
+  fish: 0,
+  fishClearedOnce: true,
+  cats: [],          // {breed, xp, stage}
+  activeCat: 0,
+  sleeping: false,
+  stats: {},         // key -> {n, c, streak, wrongN, times:[]}
+  review: {},        // key -> {left}
+  daily: {},         // 'YYYY-MM-DD' -> {n, c, timeSum, timeN}
+  best: 0,
+  worldArea: 'home',
+  customNamesClearedOnce: true,
+};
+function save() {
+  if (typeof CloudGame !== 'undefined' && CloudGame.enabled) { CloudGame.save(state); return; }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function canAfford(cost) { return UNLIMITED_FISH || state.fish >= cost; }
+function fishBalanceText() { return UNLIMITED_FISH ? '∞' : state.fish; }
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      state = Object.assign(state, saved);
+      if (saved.customNamesClearedOnce !== true) {
+        if (Array.isArray(state.cats)) {
+          for (const cat of state.cats) delete cat.name;
+        }
+        state.customNamesClearedOnce = true;
+        save();
+      }
+      if (!saved.fishClearedOnce) {
+        state.fish = 0;
+        state.fishClearedOnce = true;
+        delete state.fishGiftClaimed;
+        save();
+      }
+    }
+  } catch(e) {}
+}
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+/* ══════════════════ 音效 ══════════════════ */
+let actx = null;
+function ac() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+function tone(freq, dur, type, gain, when) {
+  try {
+    const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(gain || .18, ctx.currentTime + (when || 0));
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + (when || 0) + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(ctx.currentTime + (when || 0)); o.stop(ctx.currentTime + (when || 0) + dur + .05);
+  } catch(e) {}
+}
+const sDing   = () => { tone(660, .12); tone(880, .22, 'sine', .18, .1); };
+const sWrong  = () => { tone(200, .25, 'square', .07); };
+const sCombo  = () => { tone(660, .1); tone(830, .1, 'sine', .18, .09); tone(990, .2, 'sine', .18, .18); };
+const sFanfare= () => { [523,659,784,1047].forEach((f,i)=>tone(f,.28,'sine',.2,i*.14)); };
+const sMeow   = () => { tone(620, .12, 'sine', .12); tone(760, .18, 'sine', .1, .1); };
+const sPop    = () => { tone(440, .08, 'triangle', .12); };
+/* 一小段带通白噪声，用来做磨爪的"唰唰"声 */
+function noise(dur, when, cf, q, gain) {
+  try {
+    const ctx = ac(), n = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = cf || 1800; bp.Q.value = q || 1.2;
+    const g = ctx.createGain(), t0 = ctx.currentTime + (when || 0);
+    g.gain.setValueAtTime(gain || .12, t0);
+    g.gain.exponentialRampToValueAtTime(.001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+    src.start(t0); src.stop(t0 + dur + .02);
+  } catch (e) {}
+}
+const sScratch = () => { [0, .2, .4, .6].forEach(t => noise(.15, t, 2200, 1.1, .1)); };
+const sBat     = () => { tone(300, .07, 'square', .12); tone(560, .14, 'triangle', .1, .04); };
+
+/* 猫叫合成：滑音 + 颤音 + 带通共振峰，pitch 是 [归一化时间, 频率] 的音高轨迹 */
+function meowVoice(o_) {
+  try {
+    const ctx = ac(), t0 = ctx.currentTime + (o_.when || 0), dur = o_.dur, vol = o_.gain || .13;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(o_.pitch[0][1], t0);
+    o_.pitch.slice(1).forEach(p => osc.frequency.exponentialRampToValueAtTime(p[1], t0 + p[0] * dur));
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = o_.vibRate || 13; lg.gain.value = o_.vibDepth || 10;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = o_.formant || 900; bp.Q.value = 3.5;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 2400;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + dur * .2);
+    g.gain.setValueAtTime(vol, t0 + dur * .55);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    osc.connect(bp); bp.connect(lp); lp.connect(g); g.connect(ctx.destination);
+    osc.start(t0); lfo.start(t0);
+    osc.stop(t0 + dur + .05); lfo.stop(t0 + dur + .05);
+  } catch(e) {}
+}
+/* 呼噜声：低频锯齿波被 26Hz 振幅调制，出来的颗粒感就是猫的呼噜 */
+function purr(dur, when) {
+  try {
+    const ctx = ac(), t0 = ctx.currentTime + (when || 0);
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth'; osc.frequency.value = 45;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 300;
+    const trem = ctx.createGain(); trem.gain.value = .5;
+    const mod = ctx.createOscillator(), mg = ctx.createGain();
+    mod.frequency.value = 26; mg.gain.value = .5;
+    mod.connect(mg); mg.connect(trem.gain);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(.0001, t0);
+    env.gain.exponentialRampToValueAtTime(.1, t0 + .3);
+    env.gain.setValueAtTime(.1, t0 + dur - .5);
+    env.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    osc.connect(lp); lp.connect(trem); trem.connect(env); env.connect(ctx.destination);
+    osc.start(t0); mod.start(t0);
+    osc.stop(t0 + dur + .05); mod.stop(t0 + dur + .05);
+  } catch(e) {}
+}
+/* 困困的「喵呜～」：先轻轻抬起来，再长长地叹下去 */
+const sSleepyMeow = () => meowVoice({
+  dur: 1.1, gain: .12, vibRate: 6.5, vibDepth: 7, formant: 780,
+  pitch: [[0, 470], [.22, 600], [.45, 545], [1, 300]]
+});
+const sGoodnight = () => { purr(2, 0); sSleepyMeow(); meowVoice({
+  dur: .8, gain: .07, when: 1.15, vibRate: 5.5, vibDepth: 5, formant: 700,
+  pitch: [[0, 400], [.3, 460], [1, 260]]
+}); };
+
+/* ══════════════════ 语音 ══════════════════ */
+let zhVoice = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  zhVoice = vs.find(v => v.lang === 'zh-CN') || vs.find(v => v.lang && v.lang.startsWith('zh')) || null;
+}
+if ('speechSynthesis' in window) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = .85; u.pitch = 1.1;
+  if (zhVoice) u.voice = zhVoice;
+  speechSynthesis.speak(u);
+}
+
+/* ══════════════════ 通用 UI ══════════════════ */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (name === 'home' && catWorld) requestAnimationFrame(() => catWorld.resize());
+}
+let toastTimer = null;
+function toast(msg, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2200);
+}
+function confetti(n) {
+  const colors = ['#ff7b54','#ffd24a','#7ed957','#6ec6ff','#c49bff','#ff6f91'];
+  for (let i = 0; i < (n || 50); i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (1.8 + Math.random() * 1.6) + 's';
+    p.style.animationDelay = Math.random() * .5 + 's';
+    if (Math.random() < .5) p.style.borderRadius = '50%';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 4000);
+  }
+}
+function floatEmo(container, emoji) {
+  const e = document.createElement('div');
+  e.className = 'float-emo'; e.textContent = emoji;
+  e.style.left = (30 + Math.random() * 40) + '%';
+  e.style.top = (30 + Math.random() * 30) + '%';
+  container.appendChild(e);
+  setTimeout(() => e.remove(), 1300);
+}
+
+/* ══════════════════ 领养 ══════════════════ */
+function adoptedBreeds() { return state.cats.map(c => c.breed); }
+function adoptionsAllowed() { return 1 + state.cats.filter(c => c.stage >= MAX_STAGE).length; }
+function canAdoptMore() { return state.cats.length < adoptionsAllowed() && state.cats.length < BREED_ORDER.length; }
+function breedMatches(b, query) {
+  const breed = BREEDS[b];
+  return `${breed.name} ${breed.english || ''} ${breed.desc}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+}
+let adopting = false;
+async function adoptBreed(b) {
+  if (adopting) return;
+  if (!canAdoptMore() || adoptedBreeds().includes(b)) return;
+  adopting = true;
+  try {
+    if (CloudGame.enabled) {
+      const data = await CloudGame.action('adopt', { breed: b, requestId: crypto.randomUUID() });
+      state = data.state;
+    } else {
+      state.cats.push({ breed: b, xp: 0, stage: 0 });
+      state.activeCat = state.cats.length - 1;
+    }
+  } catch (error) { toast(error.message); return; }
+  finally { adopting = false; }
+  villagePage = Math.floor(state.activeCat / VILLAGE_SLOTS.length);
+  save(); sMeow(); confetti(40);
+  toast(`🎉 你领养了${BREEDS[b].name}！`, 3000);
+  renderHome(); showScreen('home');
+}
+
+function renderAdopt(firstTime) {
+  const grid = document.getElementById('adopt-grid');
+  document.getElementById('adopt-subtitle').textContent = firstTime
+    ? '欢迎来到猫猫乐园！先领养一只属于你的小猫咪吧～'
+    : '选一只新的小猫咪带回家吧～';
+  document.getElementById('adopt-back').style.display = firstTime ? 'none' : 'inline-block';
+  const query = document.getElementById('adopt-search').value;
+  const pool = BREED_ORDER.filter(b => !adoptedBreeds().includes(b) && breedMatches(b, query));
+  document.getElementById('adopt-count').textContent = `${pool.length} 种可选`;
+  grid.innerHTML = '';
+  if (!pool.length) { grid.textContent = '没有找到这个品种'; return; }
+  pool.forEach(b => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'adopt-card';
+    card.innerHTML = catSVG(b, 0, 150) +
+      `<div class="cat-name">${BREEDS[b].name}</div>` +
+      (BREEDS[b].english ? `<div class="cat-english">${BREEDS[b].english}</div>` : '') +
+      `<div class="cat-desc">${BREEDS[b].desc}</div>`;
+    card.onclick = () => adoptBreed(b);
+    grid.appendChild(card);
+  });
+}
+
+/* ══════════════════ 主页 ══════════════════ */
+function activeCat() { return state.cats[state.activeCat]; }
+/* 起了名字就用名字，没起就退回品种名 */
+function catName(cat) { return (cat && cat.name) ? cat.name : (cat ? BREEDS[cat.breed].name : '小猫'); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* 头顶名牌：边打字边存 */
+let nameTimer = null;
+function onNameInput(v) {
+  const cat = activeCat();
+  if (!cat) return;
+  const name = v.trim().slice(0, 8);
+  cat.name = name || undefined;
+  save();
+  document.getElementById('cat-name').textContent = catName(cat);
+  document.getElementById('name-tag').classList.toggle('named', !!name);
+}
+function setSex(sex) {
+  const cat = activeCat();
+  if (!cat || cat.sex === sex) return;
+  cat.sex = sex;
+  save(); renderHome();
+  if (!state.sleeping) { sMeow(); catSpeak(sex === 'girl' ? '我是女孩子喵～' : '我是男子汉喵！'); }
+}
+function onNameKey(e) {
+  if (e.key !== 'Enter') return;
+  e.target.blur();
+  const cat = activeCat();
+  if (!cat || !cat.name) return;
+  const tag = document.getElementById('name-tag');
+  tag.classList.remove('saved');
+  void tag.getBoundingClientRect();
+  tag.classList.add('saved');
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(() => tag.classList.remove('saved'), 500);
+  if (!state.sleeping) { sMeow(); catSpeak(`我叫${cat.name}啦！喵～`); }
+}
+let lastActive = -1;
+function renderFoodButtons() {
+  const grid = document.getElementById('food-grid');
+  if (!grid.childElementCount) {
+    for (const [id, food] of Object.entries(FOODS)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'food-btn';
+      button.dataset.food = id;
+      button.innerHTML = `<span class="food-icon">${food.icon}</span><span><span class="food-name">${food.name}</span><span class="food-value">🐟 ${food.cost}条 · 成长 +${food.xp}</span></span>`;
+      button.addEventListener('click', () => feedCat(id));
+      grid.appendChild(button);
+    }
+  }
+  for (const button of grid.children) {
+    const food = FOODS[button.dataset.food];
+    button.classList.toggle('unavailable', !canAfford(food.cost) || activeCat().stage >= MAX_STAGE);
+    button.disabled = feeding;
+  }
+}
+function renderHome() {
+  const cat = activeCat();
+  if (!cat) return;
+  if (catWorld) catWorld.syncCat(cat, BREEDS[cat.breed]);
+  const holder = document.getElementById('cat-holder');
+  // 换了一只猫就别继续待在爬架上了
+  if (lastActive !== state.activeCat) {
+    lastActive = state.activeCat;
+    onTree = false; inBowl = false; climbing = false;
+    holder.classList.remove('on-top', 'on-mid', 'to-bowl', 'pacing', 'at-post', 'at-ball', 'scratching', 'swatting', 'in-bowl');
+    document.getElementById('cat-scene').classList.remove('napping');
+  }
+  // 睡觉时猫窝挪到猫爬架和猫碗中间的空档，别再压在爬架上
+  holder.classList.toggle('sleeping', state.sleeping);
+  holder.classList.toggle('in-bowl', inBowl);
+  document.getElementById('cat-scene').classList.toggle('napping', inBowl);
+  holder.querySelectorAll('svg').forEach(s => s.remove());
+  holder.insertAdjacentHTML('afterbegin', state.sleeping
+    ? sleepSceneSVG(cat.breed, cat.stage, 210, cat.sex)
+    : inBowl
+      ? catSVG(cat.breed, cat.stage, 200, true, false, cat.sex)   // 缩成一团在碗里睡
+      : catSVG(cat.breed, cat.stage, 240, false, true, cat.sex));
+  document.getElementById('cat-hint').textContent = state.sleeping
+    ? `💤 ${catName(cat)}睡着了，点一下叫醒它`
+    : inBowl
+      ? `💤 ${catName(cat)}在透明碗里打盹，点一下叫醒它`
+      : onTree
+        ? `🌲 ${catName(cat)}在木板上玩呢，再点一下木板让它下来`
+        : '摸摸头 · 点身体去睡觉 · 点柱子磨爪 · 点木板爬高 · 点球球拍打 · 点透明碗打盹';
+  document.getElementById('cat-name').textContent = catName(cat);
+  const nameInput = document.getElementById('cat-name-input');
+  // 打字时别覆盖输入框，否则光标会跳到末尾
+  if (document.activeElement !== nameInput) nameInput.value = cat.name || '';
+  nameInput.placeholder = `给${BREEDS[cat.breed].name}起个名字～`;
+  document.getElementById('name-tag').classList.toggle('named', !!cat.name);
+  document.getElementById('sex-girl').classList.toggle('on', cat.sex === 'girl');
+  document.getElementById('sex-boy').classList.toggle('on', cat.sex === 'boy');
+  document.getElementById('cat-stage-name').textContent = STAGE_NAMES[cat.stage];
+  const growth = catGrowth(cat);
+  document.getElementById('cat-age').textContent = `${growth.ageMonths}个月`;
+  document.getElementById('cat-weight').textContent = `${growth.weightKg} kg`;
+  document.getElementById('fish-count').textContent = fishBalanceText();
+  document.getElementById('best-score').textContent = state.best;
+  const revN = Object.keys(state.review).length;
+  const badge = document.getElementById('rev-count');
+  badge.style.display = revN ? 'inline-block' : 'none';
+  badge.textContent = revN;
+  // 经验条
+  const fill = document.getElementById('xp-fill'), txt = document.getElementById('xp-text');
+  if (cat.stage >= MAX_STAGE) {
+    fill.style.width = '100%';
+    txt.textContent = '已经是最棒的✨闪光猫啦！';
+  } else {
+    const lo = STAGE_XP[cat.stage], hi = STAGE_XP[cat.stage + 1];
+    fill.style.width = Math.min(100, (cat.xp - lo) / (hi - lo) * 100) + '%';
+    txt.textContent = `成长值 ${cat.xp - lo} / ${hi - lo}`;
+  }
+  renderFoodButtons();
+  renderVillage();
+}
+/* 摸摸小猫 */
+let petTimer = null;
+const PET_WORDS = ['咕噜咕噜～', '好舒服呀～', '喵呜～再摸摸', '蹭蹭你～', '最喜欢你啦！'];
+function petStart() {
+  if (state.sleeping) return;
+  document.getElementById('cat-holder').classList.add('petting');
+  catSpeak(PET_WORDS[Math.floor(Math.random() * PET_WORDS.length)]);
+}
+function petEnd() {
+  document.getElementById('cat-holder').classList.remove('petting');
+}
+function petPat() {
+  if (state.sleeping) return;
+  const holder = document.getElementById('cat-holder');
+  holder.classList.add('petting');
+  floatEmo(holder, ['❤️', '💕', '✨'][Math.floor(Math.random() * 3)]);
+  sMeow();
+  catSpeak(PET_WORDS[Math.floor(Math.random() * PET_WORDS.length)]);
+  clearTimeout(petTimer);
+  petTimer = setTimeout(() => holder.classList.remove('petting'), 1200);
+}
+/* 跟猫窝里的小猫说晚安 */
+let gnTimer = null;
+function sayGoodnight() {
+  if (!state.sleeping) return;
+  const t = document.getElementById('gn-text');
+  if (!t) return;
+  t.classList.remove('show');
+  void t.getBoundingClientRect();
+  t.classList.add('show');
+  sGoodnight();
+  catSpeak('呼噜呼噜……明天见～');
+  clearTimeout(gnTimer);
+  gnTimer = setTimeout(() => t.classList.remove('show'), 3600);
+}
+/* ── 猫爬架三种玩法：木板攀爬 / 柱子磨爪 / 拍逗猫球 ── */
+let onTree = false, inBowl = false, climbing = false;
+const BOARD_WORDS = ['在木板上爬来爬去～', '喵！这里真好玩～', '爬呀爬呀～', '上上下下真开心！'];
+/* 只换猫的 SVG，保留气泡等其它子节点 */
+function setCatSvg(html) {
+  const h = document.getElementById('cat-holder');
+  h.querySelectorAll('svg').forEach(s => s.remove());
+  h.insertAdjacentHTML('afterbegin', html);
+}
+const SCRATCH_WORDS = ['磨磨爪子～唰唰唰！', '爪子好舒服呀～', '蹭蹭蹭～', '这根柱子最好磨啦！'];
+const BALL_WORDS = ['喵！接招～', '球球别跑！', '啪！拍到啦～', '嘿呀嘿呀～'];
+function catHop() {
+  const s = document.querySelector('#cat-holder svg');
+  if (s) { s.classList.remove('cat-hop'); void s.offsetWidth; s.classList.add('cat-hop'); }
+}
+function treeReady(cat) {
+  if (!cat || feeding || climbing) return false;
+  if (state.sleeping) { toast(`${catName(cat)}在猫窝里睡觉呢，先点它叫醒吧～💤`); sPop(); return false; }
+  return true;
+}
+/* 若正在木板或睡碗上，先让它回到地面，落地后执行 done */
+function bringDownThen(done) {
+  const holder = document.getElementById('cat-holder');
+  if (inBowl) {
+    const cat = activeCat();
+    inBowl = false; climbing = true;
+    document.getElementById('cat-scene').classList.remove('napping');
+    setCatSvg(catSVG(cat.breed, cat.stage, 240, false, true, cat.sex)); // 先睁眼醒过来
+    void holder.offsetWidth;
+    holder.classList.remove('in-bowl');                                 // 再滑回地面
+    setTimeout(() => catHop(), 520);
+    setTimeout(() => { climbing = false; done(); }, 660);
+    return;
+  }
+  if (!onTree) { done(); return; }
+  onTree = false; climbing = true;
+  holder.classList.remove('pacing'); holder.classList.add('on-mid');
+  setTimeout(() => { holder.classList.remove('on-mid'); catHop(); }, 420);
+  setTimeout(() => { climbing = false; done(); }, 860);
+}
+/* 透明睡碗：点一下爬进去打盹，再点一下醒来下来 */
+function napBowl() {
+  const cat = activeCat();
+  if (!cat || feeding || climbing) return;
+  if (state.sleeping) { toast(`${catName(cat)}在猫窝里睡觉呢，先点它叫醒吧～💤`); sPop(); return; }
+  if (inBowl) { catSpeak('睡饱啦，我下来咯～'); bringDownThen(() => { sMeow(); renderHome(); }); return; }
+  bringDownThen(() => {
+    const holder = document.getElementById('cat-holder');
+    climbing = true;
+    sPop(); catHop(); catSpeak('我去透明碗里打个盹～');
+    holder.classList.add('on-mid');
+    setTimeout(() => { holder.classList.remove('on-mid'); holder.classList.add('in-bowl'); catHop(); }, 460);
+    setTimeout(() => {
+      inBowl = true; renderHome();
+      purr(2.4, 0); sSleepyMeow(); catSpeak('呼噜呼噜……好舒服～');
+      climbing = false;
+    }, 1060);
+  });
+}
+/* 木板：点一下爬上去在上面爬来爬去，再点一下下来 */
+function climbBoard() {
+  const cat = activeCat();
+  if (!treeReady(cat)) return;
+  if (inBowl) { bringDownThen(() => climbBoard()); return; }   // 先从睡碗出来再爬木板
+  const holder = document.getElementById('cat-holder');
+  climbing = true;
+  if (!onTree) {
+    onTree = true;
+    sPop(); catHop(); catSpeak('喵！我爬上去啦～');
+    holder.classList.add('on-mid');
+    setTimeout(() => { holder.classList.add('pacing'); }, 480);
+    setTimeout(() => {
+      climbing = false; sMeow();
+      floatEmo(holder, ['✨', '⭐', '😺'][Math.floor(Math.random() * 3)]);
+      catSpeak(BOARD_WORDS[Math.floor(Math.random() * BOARD_WORDS.length)]);
+      renderHome();
+    }, 1000);
+  } else {
+    catSpeak('喵～我下来啦！');
+    bringDownThen(() => { sMeow(); renderHome(); });
+  }
+}
+/* 柱子：点一下猫走到柱子边用爪子磨爪 */
+function scratchPost() {
+  const cat = activeCat();
+  if (!treeReady(cat)) return;
+  bringDownThen(() => {
+    const holder = document.getElementById('cat-holder');
+    climbing = true;
+    catHop(); catSpeak('磨爪时间到！');
+    holder.classList.add('at-post');
+    setTimeout(() => {
+      holder.classList.add('scratching');
+      sScratch();
+      floatEmo(holder, '🐾'); floatEmo(holder, '✨');
+      catSpeak(SCRATCH_WORDS[Math.floor(Math.random() * SCRATCH_WORDS.length)]);
+    }, 460);
+    setTimeout(() => floatEmo(holder, '🐾'), 900);
+    setTimeout(() => {
+      holder.classList.remove('scratching', 'at-post');
+      catHop();
+    }, 1650);
+    setTimeout(() => { climbing = false; sMeow(); catSpeak('磨完啦，好爽～'); }, 2150);
+  });
+}
+/* 球球：点一下猫走到球下面用爪子拍球 */
+function batBall() {
+  const cat = activeCat();
+  if (!treeReady(cat)) return;
+  bringDownThen(() => {
+    const holder = document.getElementById('cat-holder');
+    const toy = document.getElementById('tree-toy');
+    climbing = true;
+    catHop(); catSpeak('球球！我来啦～');
+    holder.classList.add('at-ball');
+    const swat = () => {
+      holder.classList.remove('swatting'); void holder.offsetWidth; holder.classList.add('swatting');
+      toy.classList.remove('swatting'); void toy.offsetWidth; toy.classList.add('swatting');
+      sBat(); floatEmo(holder, '🐾');
+    };
+    setTimeout(() => { swat(); catSpeak(BALL_WORDS[Math.floor(Math.random() * BALL_WORDS.length)]); }, 460);
+    setTimeout(swat, 1250);
+    setTimeout(() => {
+      holder.classList.remove('swatting', 'at-ball');
+      toy.classList.remove('swatting');
+      catHop();
+    }, 2100);
+    setTimeout(() => { climbing = false; sMeow(); }, 2600);
+  });
+}
+function toggleSleep() {
+  const cat = activeCat();
+  if (!cat || feeding || climbing) return;
+  if (inBowl) { napBowl(); return; }   // 点正在碗里打盹的猫 → 醒来下来
+  if (onTree) { sMeow(); catSpeak('喵～我还想在上面待一会儿'); return; }
+  state.sleeping = !state.sleeping;
+  save(); renderHome();
+  if (state.sleeping) { sSleepyMeow(); catSpeak('呼噜呼噜……晚安喵～'); }
+  else { sMeow(); catSpeak('喵！我睡醒啦，精神满满！'); }
+}
+let feeding = false;
+async function feedCat(foodId) {
+  const cat = activeCat();
+  const selectedFood = FEED_ITEMS[foodId];
+  if (!cat || !selectedFood) return;
+  if (feeding || climbing) return;
+  if (state.sleeping) { toast(`${catName(cat)}在猫窝里睡觉呢，先点它叫醒吧～💤`); sPop(); return; }
+  if (cat.stage >= MAX_STAGE) { toast('它已经满级啦！去图鉴领养新的猫咪吧 📖'); catSpeak('喵呜～我吃饱啦！'); return; }
+  if (onTree || inBowl) {
+    if (!canAfford(selectedFood.cost)) { toast('小鱼干不够啦，去答题赚一些吧！🎯'); sPop(); return; }
+    catSpeak(`${selectedFood.name}！我下来啦～`);
+    bringDownThen(() => { renderHome(); feedCat(foodId); });
+    return;
+  }
+  if (!canAfford(selectedFood.cost)) { toast('小鱼干不够啦，去答题赚一些吧！🎯'); sPop(); return; }
+  feeding = true;
+  const oldStage = cat.stage;
+  try {
+    if (CloudGame.enabled) {
+      const data = await CloudGame.action('feed', {
+        foodId, catIndex: state.activeCat, requestId: crypto.randomUUID()
+      });
+      Object.assign(cat, data.state.cats[state.activeCat]);
+      state.fish = data.state.fish;
+    } else if (!UNLIMITED_FISH) state.fish -= selectedFood.cost;
+  } catch (error) { feeding = false; toast(error.message); return; }
+  save();
+  document.getElementById('fish-count').textContent = fishBalanceText();
+  renderFoodButtons();
+
+  const scene = document.getElementById('cat-scene');
+  const holder = document.getElementById('cat-holder');
+  const bowl = document.getElementById('cat-bowl');
+  const food = document.getElementById('bowl-food');
+  food.innerHTML = FOOD_BOWL[foodId];
+  const hop = () => {
+    const s = holder.querySelector('svg');
+    if (s) { s.classList.remove('cat-hop'); void s.offsetWidth; s.classList.add('cat-hop'); }
+  };
+
+  // ① 食物落下
+  const foodDrop = document.createElement('div');
+  foodDrop.className = 'fall-food'; foodDrop.textContent = selectedFood.icon;
+  scene.appendChild(foodDrop);
+  sPop();
+  catSpeak(`咦？天上掉${selectedFood.name}啦！`);
+
+  // ② 小猫跑向猫碗
+  setTimeout(() => { holder.classList.add('to-bowl'); hop(); }, 220);
+
+  // ③ 食物落进碗里
+  setTimeout(() => {
+    foodDrop.remove();
+    food.classList.add('on');
+    bowl.classList.remove('hit'); void bowl.offsetWidth; bowl.classList.add('hit');
+    sPop();
+  }, 820);
+
+  // ④ 埋头开吃
+  setTimeout(() => {
+    const s = holder.querySelector('svg');
+    if (s) { s.classList.remove('cat-hop'); void s.offsetWidth; s.classList.add('cat-eat'); }
+    sMeow();
+    floatEmo(holder, '❤️');
+    catSpeak(['喵～真好吃！','喵呜～','咕噜咕噜～','再来一份嘛～'][Math.floor(Math.random()*4)]);
+  }, 980);
+  setTimeout(() => floatEmo(holder, '💕'), 1500);
+
+  // ⑤ 吃光，跑回原位
+  setTimeout(() => { food.classList.remove('on'); }, 2250);
+  setTimeout(() => {
+    holder.classList.remove('to-bowl');
+    hop();
+    catSpeak('吃饱啦，谢谢你～');
+  }, 2400);
+
+  // ⑥ 结算成长值
+  setTimeout(() => {
+    feeding = false;
+    if (!CloudGame.enabled) {
+      cat.xp += selectedFood.xp;
+      if (cat.stage < MAX_STAGE && cat.xp >= STAGE_XP[cat.stage + 1]) cat.stage++;
+    }
+    if (cat.stage > oldStage) {
+      save(); renderHome();
+      setTimeout(() => showEvolution(cat), 400);
+    } else {
+      save(); renderHome();
+    }
+  }, 2950);
+}
+let bubbleTimer = null;
+function catSpeak(text) {
+  const b = document.getElementById('speech-bubble');
+  b.textContent = text; b.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => b.classList.remove('show'), 2000);
+}
+function showEvolution(cat) {
+  sFanfare(); confetti(80);
+  document.getElementById('evo-title').textContent = cat.stage >= MAX_STAGE ? '🌟 满级进化！' : '🎉 进化啦！';
+  document.getElementById('evo-cat').innerHTML = catSVG(cat.breed, cat.stage, 220, false, false, cat.sex);
+  document.getElementById('evo-text').textContent =
+    `${catName(cat)}长大了，变成了「${STAGE_NAMES[cat.stage]}」！现在 ${catGrowth(cat).weightKg} kg。`;
+  document.getElementById('evo-overlay').classList.add('show');
+  speak(`哇！${catName(cat)}进化成${STAGE_NAMES[cat.stage].replace('✨','')}啦！`);
+}
+function closeEvo() {
+  document.getElementById('evo-overlay').classList.remove('show');
+  const cat = activeCat();
+  if (cat && cat.stage >= MAX_STAGE && canAdoptMore()) {
+    setTimeout(() => { toast('🔓 解锁新猫咪！去图鉴领养吧～', 3000); }, 300);
+  }
+}
+
+/* ══════════════════ 出题 ══════════════════ */
+function statOf(key) {
+  if (!state.stats[key]) state.stats[key] = { n:0, c:0, streak:0, wrongN:0, times:[] };
+  return state.stats[key];
+}
+function weightedPick(excludeKey) {
+  const pool = [];
+  for (const [a, b] of ALL_FACTS) {
+    const key = factKey(a, b);
+    if (key === excludeKey) continue;
+    let w = 1;
+    if (state.review[key]) w += 4;
+    const s = state.stats[key];
+    if (s && s.n >= 3 && s.c / s.n < .7) w += 2;
+    if (!s || s.n === 0) w += 1;   // 没练过的也优先出
+    pool.push([a, b, w]);
+  }
+  let total = pool.reduce((t, x) => t + x[2], 0);
+  let r = Math.random() * total;
+  for (const [a, b, w] of pool) { r -= w; if (r <= 0) return [a, b]; }
+  return pool[pool.length - 1].slice(0, 2);
+}
+
+/* ══════════════════ 答题回合 ══════════════════ */
+const TRAIN_N = 10, CHALLENGE_SEC = 60;
+let session = null;
+let challengeTimer = null;
+
+let roundStarting = false;
+async function startRound(mode) {
+  if (roundStarting || (session && !session.over)) return;
+  if (mode === 'review' && Object.keys(state.review).length === 0) {
+    toast('太厉害了！错题袋是空的，没有需要特训的口诀 🎉'); sDing();
+    return;
+  }
+  roundStarting = true;
+  let roundId = null;
+  try {
+    if (CloudGame.enabled) roundId = (await CloudGame.action('rounds', { mode })).id;
+  } catch (error) { toast(error.message); return; }
+  finally { roundStarting = false; }
+  session = {
+    roundId, pending: false, waiting: true, answerRequest: null,
+    mode, correct: 0, attempts: 0, combo: 0, maxCombo: 0,
+    fish: 0, done: 0, queue: [], current: null, shownAt: 0,
+    wrongOnThis: false, over: false,
+  };
+  if (mode === 'train') {
+    let last = null;
+    for (let i = 0; i < TRAIN_N; i++) {
+      const f = weightedPick(last);
+      last = factKey(f[0], f[1]);
+      session.queue.push(f);
+    }
+    session.total = TRAIN_N;
+  } else if (mode === 'review') {
+    const keys = Object.keys(state.review);
+    for (let i = keys.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [keys[i], keys[j]] = [keys[j], keys[i]];
+    }
+    session.queue = keys.map(k => k.split('x').map(Number));
+    session.total = session.queue.length;
+  } else {
+    session.total = 0; // 无限出题
+    session.endAt = Date.now() + CHALLENGE_SEC * 1000;
+  }
+  const isCh = mode === 'challenge';
+  document.getElementById('timer-wrap').style.display = isCh ? 'block' : 'none';
+  document.getElementById('round-fish').textContent = '0';
+  document.getElementById('combo-tag').classList.remove('show');
+  const cat = activeCat();
+  document.getElementById('mini-cat-corner').innerHTML = cat ? catSVG(cat.breed, cat.stage, 84, false, false, cat.sex) : '';
+  showScreen('game');
+  if (isCh) {
+    const fill = document.getElementById('timer-fill');
+    fill.style.width = '100%'; fill.classList.remove('hurry');
+    challengeTimer = setInterval(() => {
+      const left = Math.max(0, session.endAt - Date.now());
+      const pct = left / (CHALLENGE_SEC * 1000) * 100;
+      fill.style.width = pct + '%';
+      if (pct < 25) fill.classList.add('hurry');
+      if (left <= 0 && !session.pending) endRound();
+    }, 250);
+  }
+  await nextQuestion();
+}
+function updatePaws() {
+  const el = document.getElementById('progress-paws');
+  if (session.mode === 'challenge') {
+    el.textContent = `已答对 ${session.correct} 题`;
+  } else {
+    let s = '';
+    for (let i = 0; i < session.total; i++) s += i < session.done ? '🐾' : '·';
+    el.textContent = s;
+  }
+}
+async function nextQuestion() {
+  if (!session || session.over || session.pending) return;
+  const currentSession = session;
+  session.waiting = true;
+  if (!session.retryQuestion && session.mode !== 'challenge' && session.queue.length === 0) { endRound(); return; }
+  const f = session.retryQuestion || (session.mode === 'challenge'
+    ? weightedPick(session.current ? factKey(session.current[0], session.current[1]) : null)
+    : session.queue.shift());
+  if (CloudGame.enabled) {
+    session.pending = true;
+    try { session.questionId = (await CloudGame.question(session.roundId, f[0], f[1])).id; }
+    catch (error) {
+      session.retryQuestion = f;
+      toast(error.message + '，请点击提交重试');
+      return;
+    } finally { currentSession.pending = false; }
+    if (session !== currentSession) return;
+  }
+  session.retryQuestion = null;
+  session.answerRequest = null;
+  session.waiting = false;
+  session.current = f;
+  session.wrongOnThis = false;
+  const flip = Math.random() < .5;
+  const [a, b] = flip ? [f[1], f[0]] : [f[0], f[1]];
+  session.showA = a; session.showB = b;
+  document.getElementById('q-text').innerHTML = `${a} <span class="op">×</span> ${b} = ?`;
+  const enc = document.getElementById('encourage-tag');
+  enc.textContent = ''; enc.classList.remove('show');
+  const inp = document.getElementById('answerInput');
+  inp.value = ''; inp.focus();
+  session.shownAt = Date.now();
+  updatePaws();
+}
+async function submitAnswer() {
+  if (!session || session.over || session.pending) return;
+  if (session.retryQuestion) { nextQuestion(); return; }
+  if (session.waiting) return;
+  const currentSession = session;
+  const inp = document.getElementById('answerInput');
+  const val = session.answerRequest ? session.answerRequest.answer : Number(inp.value.trim());
+  if (!inp.value.trim() || !Number.isInteger(val) || val < 0 || val > 1000) { inp.focus(); return; }
+  const [a, b] = session.current;
+  let response = null;
+  if (CloudGame.enabled) {
+    session.pending = true;
+    session.answerRequest ||= { questionId: session.questionId, answer: val, requestId: crypto.randomUUID() };
+    try { response = await CloudGame.answer(session.roundId, session.answerRequest); }
+    catch (error) { toast(error.message + '，请点击提交重试'); return; }
+    finally { session.pending = false; }
+    session.answerRequest = null;
+  }
+  const right = response ? response.right : val === a * b;
+  const key = factKey(a, b);
+  const s = statOf(key);
+  const elapsed = Math.min(15000, Date.now() - session.shownAt);
+  const day = state.daily[todayKey()] || (state.daily[todayKey()] = { n:0, c:0, timeSum:0, timeN:0 });
+  const firstTry = response ? response.firstTry : !session.wrongOnThis;
+  // 统计只按"第一次作答"算，重试不重复计数
+  if (firstTry) { s.n++; day.n++; session.attempts++; }
+  const card = document.getElementById('question-card');
+  if (right) {
+    session.waiting = true;
+    if (firstTry) {
+      s.c++; s.streak++; day.c++;
+      day.timeSum += elapsed; day.timeN++;
+      s.times.push(elapsed); if (s.times.length > 10) s.times.shift();
+      session.correct++;
+      session.combo++; session.maxCombo = Math.max(session.maxCombo, session.combo);
+      // 错题袋毕业：只有一次答对才算数
+      if (state.review[key]) {
+        state.review[key].left--;
+        if (state.review[key].left <= 0) {
+          delete state.review[key];
+          toast(`🎓 「${kouJue(a,b)}」从错题袋毕业啦！`);
+        }
+      }
+    }
+    session.done++;
+    let gain = 1;
+    if (firstTry && session.combo > 0 && session.combo % 5 === 0) {
+      gain += 3; sCombo();
+      const tag = document.getElementById('combo-tag');
+      tag.textContent = `🔥 连对 ${session.combo}！奖励 +3🐟`;
+      tag.classList.remove('show'); void tag.offsetWidth; tag.classList.add('show');
+    } else {
+      sDing();
+    }
+    if (response) gain = response.gain;
+    session.fish += gain;
+    document.getElementById('round-fish').textContent = session.fish;
+    card.classList.remove('flash-good'); void card.offsetWidth; card.classList.add('flash-good');
+    floatEmo(card, ['⭐','🐟','✨','🎉'][Math.floor(Math.random()*4)]);
+    save();
+    setTimeout(() => { if (session === currentSession) nextQuestion(); }, 550);
+  } else if (firstTry) {
+    // 第一次答错：不给答案，鼓励再试一次
+    s.streak = 0; s.wrongN++;
+    session.combo = 0;
+    session.wrongOnThis = true;
+    state.review[key] = { left: 3 };
+    sWrong();
+    card.classList.remove('flash-bad'); void card.offsetWidth; card.classList.add('flash-bad');
+    showEncourage();
+    save();
+  } else {
+    session.waiting = true;
+    // 第二次还没对：温柔地给出答案和口诀
+    sWrong();
+    card.classList.remove('flash-bad'); void card.offsetWidth; card.classList.add('flash-bad');
+    // 重新入队：稍后再考一次
+    if (session.mode !== 'challenge') {
+      const pos = Math.min(session.queue.length, 2);
+      session.queue.splice(pos, 0, [a, b]);
+      session.total++;
+    }
+    save();
+    setTimeout(() => { if (session === currentSession) showKoujue(a, b); }, 400);
+  }
+  if (session && session.mode === 'challenge' && Date.now() >= session.endAt) endRound();
+}
+const ENCOURAGE = ['别灰心，再想一想！', '差一点点，你可以的！', '加油，再试一次～', '嗯……再算一算看？'];
+let encourageTimer = null;
+function showEncourage() {
+  const el = document.getElementById('encourage-tag');
+  const msg = ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)];
+  el.textContent = '🐱 ' + msg;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  speak(msg);
+  clearTimeout(encourageTimer);
+  encourageTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  const inp = document.getElementById('answerInput');
+  inp.value = ''; inp.focus();
+}
+let currentKJ = null;
+const KJ_COMFORT = ['没关系，答错是学会的开始！', '别灰心，猫猫陪你再学一遍～', '没事没事，你已经很努力啦！'];
+function showKoujue(a, b) {
+  if (!session || session.over) return;
+  currentKJ = [a, b];
+  document.getElementById('kj-label').textContent = KJ_COMFORT[Math.floor(Math.random() * KJ_COMFORT.length)];
+  document.getElementById('kj-formula').textContent = `${session.showA} × ${session.showB} = ${a * b}`;
+  document.getElementById('kj-rhyme').textContent = kouJue(a, b);
+  document.getElementById('koujue-overlay').classList.add('show');
+  const kj = kouJue(a, b);
+  speak(`没关系！${kj.slice(0, 2)}，${kj.slice(2)}`);
+}
+function speakKoujue() {
+  if (!currentKJ) return;
+  const kj = kouJue(currentKJ[0], currentKJ[1]);
+  // 在乘数和积之间停顿，更像背口诀
+  const p = currentKJ[0] * currentKJ[1];
+  const head = kj.slice(0, 2);
+  const tail = kj.slice(2);
+  speak(`${head}，${tail}`);
+}
+function closeKoujue() {
+  document.getElementById('koujue-overlay').classList.remove('show');
+  if (session && !session.over) nextQuestion();
+}
+function quitRound() {
+  if (session && session.pending) { toast('正在保存答案，请稍等一下'); return; }
+  if (session && session.attempts > 0) { endRound(); }
+  else {
+    session = null;
+    if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
+    renderHome(); showScreen('home');
+  }
+}
+function endRound() {
+  if (!session || session.over || session.pending) return;
+  session.over = true;
+  if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
+  document.getElementById('koujue-overlay').classList.remove('show');
+  if (!CloudGame.enabled) state.fish += session.fish;
+  const starsEl = document.getElementById('result-stars');
+  const bigEl = document.getElementById('result-big');
+  const subEl = document.getElementById('result-sub');
+  const acc = session.attempts ? session.correct / session.attempts : 0;
+  let celebrate = false;
+  if (session.mode === 'challenge') {
+    const newBest = session.correct > state.best;
+    if (newBest) { state.best = session.correct; celebrate = true; }
+    starsEl.textContent = newBest ? '🏆' : '⚡';
+    bigEl.textContent = `60 秒答对 ${session.correct} 题！`;
+    subEl.innerHTML = (newBest ? '🎉 新纪录！<br>' : `最高纪录：${state.best} 题<br>`) +
+      `最高连对 ${session.maxCombo} · 赚到 🐟×${session.fish}`;
+  } else {
+    const stars = acc >= .95 ? 3 : acc >= .75 ? 2 : 1;
+    celebrate = stars === 3;
+    starsEl.textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    bigEl.textContent = session.mode === 'review' ? '错题特训完成！' : '每日训练完成！';
+    subEl.innerHTML = `答对 ${session.correct} / ${session.attempts} 题 · 最高连对 ${session.maxCombo}<br>赚到 🐟×${session.fish}，快去喂${esc(catName(activeCat()))}吧！`;
+  }
+  const mode = session.mode;
+  document.getElementById('again-btn').onclick = () => startRound(mode);
+  save();
+  showScreen('result');
+  if (celebrate) { sFanfare(); confetti(80); }
+  else sDing();
+  session = null;
+}
+document.getElementById('answerInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+// 全局键盘：在答题界面自动聚焦输入框
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('screen-game').classList.contains('active')) return;
+  if (document.getElementById('koujue-overlay').classList.contains('show')) {
+    if (e.key === 'Enter' || e.key === ' ') closeKoujue();
+    return;
+  }
+  const inp = document.getElementById('answerInput');
+  if (document.activeElement !== inp && /^[0-9]$/.test(e.key)) inp.focus();
+});
+
+/* ══════════════════ 图鉴 ══════════════════ */
+function showGallery() {
+  const grid = document.getElementById('gallery-grid');
+  grid.innerHTML = '';
+  const owned = adoptedBreeds();
+  const slots = canAdoptMore();
+  document.getElementById('gallery-tip').textContent = slots
+    ? '🔓 可以领养新的猫咪啦！点击下面带锁的猫咪把它带回家～'
+    : '把一只猫咪养成 ✨闪光猫，就能领养下一只新猫咪！';
+  const query = document.getElementById('gallery-search').value;
+  const visible = BREED_ORDER.filter(b => breedMatches(b, query));
+  document.getElementById('gallery-count').textContent = `已领养 ${owned.length} / ${BREED_ORDER.length} · 显示 ${visible.length} 种`;
+  if (!visible.length) grid.textContent = '没有找到这个品种';
+  visible.forEach(b => {
+    const card = document.createElement('div');
+    const idx = owned.indexOf(b);
+    if (idx >= 0) {
+      const cat = state.cats[idx];
+      card.className = 'g-card' + (idx === state.activeCat ? ' active-cat' : '');
+      // 起了名就把品种挪到下面一行，别让名字把品种顶没了
+      const sub = cat.name ? `${BREEDS[b].name} · ${STAGE_NAMES[cat.stage]}` : STAGE_NAMES[cat.stage];
+      const growth = catGrowth(cat);
+      card.innerHTML = catSVG(b, cat.stage, 130, false, false, cat.sex) +
+        `<div class="n">${esc(catName(cat))}</div>` +
+        (BREEDS[b].english ? `<div class="latin">${BREEDS[b].english}</div>` : '') +
+        `<div class="s">${sub}</div><div class="g-meta">${growth.ageMonths}个月 · ${growth.weightKg} kg</div>`;
+      if (idx !== state.activeCat) {
+        card.style.cursor = 'pointer';
+        card.title = '点击设为当前伙伴';
+        card.onclick = () => { state.activeCat = idx; villagePage = Math.floor(idx / VILLAGE_SLOTS.length); save(); sMeow(); showGallery(); };
+      }
+    } else {
+      card.className = 'g-card locked';
+      card.innerHTML = catSVG(b, 0, 130) +
+        `<div class="n">${BREEDS[b].name}</div>` +
+        (BREEDS[b].english ? `<div class="latin">${BREEDS[b].english}</div>` : '') +
+        `<div class="s">${slots ? '💝 可以领养' : '🔒 未解锁'}</div>`;
+      if (slots) {
+        const btn = document.createElement('button');
+        btn.className = 'btn green small';
+        btn.textContent = '💝 领养';
+        btn.onclick = () => adoptBreed(b);
+        card.appendChild(btn);
+      }
+    }
+    grid.appendChild(card);
+  });
+  showScreen('gallery');
+}
+
+/* ══════════════════ 小猫村 ══════════════════ */
+const VILLAGE_SLOTS = [
+  { l: 12, b: 5,  s: 145 },
+  { l: 62, b: 3,  s: 155 },
+  { l: 37, b: 12, s: 130 },
+  { l: 84, b: 12, s: 125 },
+  { l: 47, b: 30, s: 108 },
+  { l: 24, b: 30, s: 105 },
+  { l: 70, b: 24, s: 108 },
+  { l: 92, b: 34, s: 92 },
+];
+const VILLAGE_HOUSE_COUNT = 104;
+const PLAZA_HOUSE_COUNT = 5;
+const HOUSE_COLORS = [
+  ['#d99b58','#b77b4c','#945c37'],
+  ['#e7b777','#bb8050','#94613b'],
+  ['#d99ea0','#bd797e','#975d62'],
+  ['#a9b9d7','#7d96ba','#61799c'],
+  ['#b6c997','#8ba766','#69834d'],
+];
+const VILLAGE_WORDS = ['喵～晒太阳真舒服！', '今天天气真好！', '要不要一起躺躺？', '蹭蹭你～', '喵喵喵～'];
+const villageHouseOccupants = new Map();
+const villageAwakeCats = new Set();
+let villageHouseBusy = false;
+let villagePage = 0;
+function changeVillagePage(delta) {
+  if (villageHouseBusy) return;
+  const lastPage = Math.max(0, Math.ceil(state.cats.length / VILLAGE_SLOTS.length) - 1);
+  const next = Math.max(0, Math.min(lastPage, villagePage + delta));
+  if (next === villagePage) return;
+  villagePage = next;
+  renderVillage();
+}
+function renderVillageHouses() {
+  const grid = document.getElementById('village-house-grid');
+  document.getElementById('village-house-count').textContent = VILLAGE_HOUSE_COUNT;
+  if (grid.children.length === VILLAGE_HOUSE_COUNT - PLAZA_HOUSE_COUNT) return;
+  grid.innerHTML = '';
+  for (let index = PLAZA_HOUSE_COUNT; index < VILLAGE_HOUSE_COUNT; index++) {
+    const [wall, door, trim] = HOUSE_COLORS[index % HOUSE_COLORS.length];
+    const house = document.createElement('button');
+    house.type = 'button';
+    house.className = 'v-house grid-house';
+    house.dataset.house = index;
+    house.title = `${index + 1} 号猫窝`;
+    house.innerHTML = `<svg viewBox="0 0 120 96" aria-hidden="true">
+      <path d="M9 91 Q9 25 60 25 Q111 25 111 91 Z" fill="${wall}"/>
+      <path d="M19 59 Q32 34 60 33 Q88 34 101 59" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="5"/>
+      <ellipse cx="60" cy="69" rx="24" ry="19" fill="#49392f"/>
+      <g class="house-door"><path d="M36 88 V68 Q36 48 60 48 Q84 48 84 68 V88 Z" fill="${door}" stroke="${trim}" stroke-width="2"/>
+        <circle cx="76" cy="72" r="2.5" fill="#ffe3a4"/></g>
+      <path d="M12 91 H108" stroke="${trim}" stroke-width="6" stroke-linecap="round"/>
+    </svg><span class="v-house-runner" aria-hidden="true"></span><span class="house-number">${index + 1} 号</span>`;
+    house.addEventListener('click', () => visitVillageHouse(index));
+    grid.appendChild(house);
+  }
+}
+function updateVillageHouses() {
+  document.querySelectorAll('.v-house').forEach(house => {
+    const catIndex = villageHouseOccupants.get(Number(house.dataset.house));
+    const occupied = catIndex !== undefined;
+    house.classList.toggle('occupied', occupied);
+    house.setAttribute('aria-label', occupied
+      ? `打开猫窝，让${catName(state.cats[catIndex])}出来`
+      : '打开猫窝，让附近的小猫进去');
+  });
+}
+function setVillageRunTarget(catEl, house) {
+  const catBox = catEl.getBoundingClientRect();
+  const houseBox = house.getBoundingClientRect();
+  catEl.style.setProperty('--run-x', `${houseBox.left + houseBox.width / 2 - catBox.left - catBox.width / 2}px`);
+  catEl.style.setProperty('--run-y', `${houseBox.top + houseBox.height * .7 - catBox.top - catBox.height / 2}px`);
+}
+function visitVillageHouse(houseIndex) {
+  if (villageHouseBusy) return;
+  const house = document.querySelector(`.v-house[data-house="${houseIndex}"]`);
+  if (!house) return;
+  const occupant = villageHouseOccupants.get(houseIndex);
+  if (occupant !== undefined && Math.floor(occupant / VILLAGE_SLOTS.length) !== villagePage) {
+    villagePage = Math.floor(occupant / VILLAGE_SLOTS.length);
+    renderVillage();
+  }
+  let cats = [...document.querySelectorAll('#village-cats .v-cat')];
+  let catEl;
+  if (occupant === undefined) {
+    const insideCats = new Set(villageHouseOccupants.values());
+    let available = cats.filter(el => !insideCats.has(Number(el.dataset.catIndex)));
+    if (!available.length) {
+      const nextCat = state.cats.findIndex((_, i) => !insideCats.has(i));
+      if (nextCat >= 0) {
+        villagePage = Math.floor(nextCat / VILLAGE_SLOTS.length);
+        renderVillage();
+        cats = [...document.querySelectorAll('#village-cats .v-cat')];
+        available = cats.filter(el => !insideCats.has(Number(el.dataset.catIndex)));
+      }
+    }
+    if (!available.length) { toast('小猫们都进屋啦～'); return; }
+    const center = house.getBoundingClientRect().left + house.getBoundingClientRect().width / 2;
+    catEl = available.reduce((nearest, el) => {
+      const distance = item => {
+        const box = item.getBoundingClientRect();
+        return Math.abs(box.left + box.width / 2 - center);
+      };
+      return distance(el) < distance(nearest) ? el : nearest;
+    });
+    const catIndex = Number(catEl.dataset.catIndex);
+    villageHouseOccupants.set(houseIndex, catIndex);
+    if (catIndex % 2 === 1 && !villageAwakeCats.has(catIndex)) {
+      villageAwakeCats.add(catIndex);
+      catEl.querySelector('.v-mat')?.remove();
+      catEl.querySelector('svg').outerHTML = catSVG(state.cats[catIndex].breed,
+        state.cats[catIndex].stage, VILLAGE_SLOTS[catIndex % VILLAGE_SLOTS.length].s, false, false, state.cats[catIndex].sex);
+    }
+  } else {
+    catEl = cats.find(el => Number(el.dataset.catIndex) === occupant);
+    villageHouseOccupants.delete(houseIndex);
+  }
+  if (!catEl) { renderVillage(); return; }
+  villageHouseBusy = true;
+  const inNeighborhood = house.classList.contains('grid-house');
+  if (inNeighborhood) {
+    const runner = house.querySelector('.v-house-runner');
+    const catIndex = occupant === undefined ? Number(catEl.dataset.catIndex) : occupant;
+    const cat = state.cats[catIndex];
+    runner.innerHTML = catSVG(cat.breed, cat.stage, 52, false, false, cat.sex);
+    runner.classList.remove('entering', 'leaving');
+    void runner.offsetWidth;
+    runner.classList.add(occupant === undefined ? 'entering' : 'leaving');
+  } else {
+    setVillageRunTarget(catEl, house);
+  }
+  house.classList.add('open');
+  sMeow();
+  if (!inNeighborhood && occupant === undefined) {
+    catEl.classList.add('running-in');
+  } else if (!inNeighborhood) {
+    catEl.classList.remove('in-house');
+    catEl.classList.add('running-out');
+  }
+  setTimeout(() => {
+    catEl.classList.remove('running-in', 'running-out');
+    if (occupant === undefined) catEl.classList.add('in-house');
+    else catEl.classList.remove('in-house');
+    house.classList.remove('open');
+    villageHouseBusy = false;
+    updateVillageHouses();
+    const catIndex = occupant === undefined ? Number(catEl.dataset.catIndex) : occupant;
+    toast(`${catName(state.cats[catIndex])}${occupant === undefined ? '跑进猫窝啦！' : '从猫窝出来啦！'}`);
+  }, 800);
+}
+function renderVillage() {
+  renderVillageHouses();
+  const wrap = document.getElementById('village-cats');
+  wrap.innerHTML = '';
+  const pageSize = VILLAGE_SLOTS.length;
+  const pageCount = Math.max(1, Math.ceil(state.cats.length / pageSize));
+  villagePage = Math.min(villagePage, pageCount - 1);
+  const pager = document.getElementById('village-pager');
+  pager.style.display = pageCount > 1 ? 'flex' : 'none';
+  document.getElementById('village-page-label').textContent = `${villagePage + 1} / ${pageCount}`;
+  document.getElementById('village-prev').disabled = villagePage === 0;
+  document.getElementById('village-next').disabled = villagePage === pageCount - 1;
+  state.cats.slice(villagePage * pageSize, (villagePage + 1) * pageSize).forEach((cat, slotIndex) => {
+    const i = villagePage * pageSize + slotIndex;
+    const slot = VILLAGE_SLOTS[slotIndex];
+    const d = document.createElement('div');
+    d.className = 'v-cat';
+    d.dataset.catIndex = i;
+    if ([...villageHouseOccupants.values()].includes(i)) d.classList.add('in-house');
+    d.style.left = slot.l + '%';
+    d.style.bottom = slot.b + '%';
+    d.style.zIndex = 40 - slot.b;
+    const asleep = i % 2 === 1 && !villageAwakeCats.has(i);
+    d.innerHTML = (asleep ? `<div class="v-mat" style="width:${Math.round(slot.s * .78)}px"></div>` : '')
+      + catSVG(cat.breed, cat.stage, slot.s, asleep, false, cat.sex);
+    const nm = document.createElement('div');
+    nm.className = 'v-name';
+    nm.textContent = catName(cat);
+    d.appendChild(nm);
+    d.onclick = () => {
+      if (asleep) { purr(1.2, 0); } else { sMeow(); }
+      const svg = d.querySelector('svg');
+      if (svg) { svg.classList.remove('cat-bounce'); void svg.offsetWidth; svg.classList.add('cat-bounce'); }
+      floatEmo(d, ['❤️', '☀️', '✨'][Math.floor(Math.random() * 3)]);
+      toast(`${catName(cat)}：${asleep ? '呼噜呼噜……好暖和～' : VILLAGE_WORDS[Math.floor(Math.random() * VILLAGE_WORDS.length)]}`);
+    };
+    wrap.appendChild(d);
+  });
+  document.getElementById('village-tip').textContent = state.cats.length >= BREED_ORDER.length
+    ? `${state.cats.length} 只猫咪全员到齐，太阳晒得刚刚好～`
+    : `村里住着 ${state.cats.length} 只猫咪 · 把猫咪养成 ✨闪光猫 就能领养新村民`;
+  updateVillageHouses();
+}
+
+function openSnackShop() {
+  const list = document.getElementById('snack-options');
+  list.innerHTML = '';
+  document.getElementById('snack-fish-count').textContent = fishBalanceText();
+  document.getElementById('snack-recipient').textContent = `给当前伙伴：${catName(activeCat())}`;
+  for (const [id, snack] of Object.entries(SNACKS)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'snack-option';
+    button.classList.toggle('unavailable', !canAfford(snack.cost));
+    button.innerHTML = `<span class="snack-icon">${snack.icon}</span><span class="snack-name">${snack.name}</span><span class="snack-price">🐟 ${snack.cost}条<small>成长 +${snack.xp}</small></span>`;
+    button.addEventListener('click', () => buySnack(id));
+    list.appendChild(button);
+  }
+  document.getElementById('snack-overlay').classList.add('show');
+  document.querySelector('.snack-close').focus();
+}
+function closeSnackShop() {
+  document.getElementById('snack-overlay').classList.remove('show');
+  document.querySelector('.v-kiosk').focus({ preventScroll:true });
+}
+function buySnack(id) {
+  const snack = SNACKS[id];
+  const cat = activeCat();
+  if (!snack || !cat || feeding || climbing) return;
+  if (state.sleeping) { toast('先叫醒小猫，再给它吃零食吧～'); return; }
+  if (cat.stage >= MAX_STAGE) { toast('这只猫咪已经长大啦，换一只小猫试试～'); return; }
+  if (!canAfford(snack.cost)) { toast('小鱼干不够啦，去答题赚一些吧！🎯'); return; }
+  closeSnackShop();
+  document.getElementById('cat-scene').scrollIntoView({ behavior:'smooth', block:'center' });
+  feedCat(id);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('snack-overlay').classList.contains('show')) closeSnackShop();
+});
+
+/* ══════════════════ 家长面板 ══════════════════ */
+let gateA = 0;
+function openParentGate() {
+  const x = 11 + Math.floor(Math.random() * 8), y = 11 + Math.floor(Math.random() * 8);
+  gateA = x * y;
+  document.getElementById('gate-q').textContent = `${x} × ${y} = ?`;
+  document.getElementById('gateInput').value = '';
+  document.getElementById('gate-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('gateInput').focus(), 100);
+}
+function closeGate() { document.getElementById('gate-overlay').classList.remove('show'); }
+function checkGate() {
+  if (parseInt(document.getElementById('gateInput').value, 10) === gateA) {
+    closeGate(); renderParent(); showScreen('parent');
+  } else {
+    toast('答案不对哦，再想想～'); sWrong();
+  }
+}
+document.getElementById('gateInput').addEventListener('keydown', e => { if (e.key === 'Enter') checkGate(); });
+
+function renderParent() {
+  // 热力图
+  const tbl = document.getElementById('heatmap');
+  let html = '<tr><th></th>';
+  for (let b = 2; b <= 9; b++) html += `<th>×${b}</th>`;
+  html += '</tr>';
+  for (let a = 2; a <= 9; a++) {
+    html += `<tr><th>${a}</th>`;
+    for (let b = 2; b <= 9; b++) {
+      const s = state.stats[factKey(a, b)];
+      if (!s || s.n === 0) {
+        html += `<td class="hm-cell" style="background:#d8d8d8;">–</td>`;
+      } else {
+        const acc = s.c / s.n;
+        const col = acc >= .9 ? '#5cb85c' : acc >= .7 ? '#efb63d' : '#e05a5a';
+        html += `<td class="hm-cell" style="background:${col}" title="${a}×${b}：${s.c}/${s.n}">${Math.round(acc * 100)}%</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  tbl.innerHTML = html;
+  // 薄弱口诀
+  const weak = [];
+  for (const [a, b] of ALL_FACTS) {
+    const s = state.stats[factKey(a, b)];
+    if (s && s.n >= 3) weak.push([a, b, s.c / s.n, s.n]);
+  }
+  weak.sort((x, y) => x[2] - y[2]);
+  const wl = document.getElementById('weak-list');
+  const top = weak.filter(w => w[2] < .9).slice(0, 5);
+  wl.innerHTML = top.length
+    ? top.map(([a, b, acc, n]) =>
+        `<div class="weak-item"><span>${kouJue(a,b)}（${a}×${b}）</span><span>正确率 ${Math.round(acc*100)}%（练了${n}次）</span></div>`).join('')
+    : '<p style="text-align:center;color:#5cb85c;font-weight:700;">👍 目前没有明显薄弱的口诀！</p>';
+  // 反应速度折线
+  const days = Object.keys(state.daily).sort().slice(-14);
+  const pts = days.map(d => {
+    const dd = state.daily[d];
+    return { d: d.slice(5), v: dd.timeN ? dd.timeSum / dd.timeN / 1000 : null };
+  }).filter(p => p.v !== null);
+  const sc = document.getElementById('speed-chart');
+  if (pts.length === 0) {
+    sc.innerHTML = '<p style="color:#999;">还没有数据，先去玩几局吧～</p>';
+  } else {
+    const W = 560, H = 180, PAD = 36;
+    const maxV = Math.max(4, ...pts.map(p => p.v));
+    const px = i => pts.length === 1 ? W / 2 : PAD + i * (W - PAD * 2) / (pts.length - 1);
+    const py = v => H - PAD - (v / maxV) * (H - PAD * 2);
+    let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%;">`;
+    for (let g = 1; g <= 3; g++) {
+      const gy = py(maxV * g / 4);
+      svg += `<line x1="${PAD}" y1="${gy}" x2="${W-PAD}" y2="${gy}" stroke="#eee"/>`;
+    }
+    svg += `<polyline fill="none" stroke="#3f9be8" stroke-width="3" points="${pts.map((p,i)=>px(i)+','+py(p.v)).join(' ')}"/>`;
+    pts.forEach((p, i) => {
+      svg += `<circle cx="${px(i)}" cy="${py(p.v)}" r="5" fill="#3f9be8"/>
+        <text x="${px(i)}" y="${py(p.v)-10}" text-anchor="middle" font-size="12" fill="#555">${p.v.toFixed(1)}s</text>
+        <text x="${px(i)}" y="${H-10}" text-anchor="middle" font-size="11" fill="#999">${p.d}</text>`;
+    });
+    svg += '</svg>';
+    sc.innerHTML = svg;
+  }
+}
+async function resetAll() {
+  if (!confirm('确定要清空当前账号的所有进度吗？猫咪和答题记录会消失。')) return;
+  if (!confirm('真的确定吗？这个操作无法撤销！')) return;
+  try {
+    if (CloudGame.enabled) await CloudGame.action('reset');
+    else localStorage.removeItem(SAVE_KEY);
+  } catch (error) { toast(error.message); return; }
+  location.reload();
+}
+
+/* ══════════════════ 启动 ══════════════════ */
+let catWorld = null;
+async function startGame() {
+  const cloud = await CloudGame.bootstrap({ getState: () => state, showError: message => toast(message) });
+  if (cloud === false) return;
+  if (cloud) { state = cloud.state; UNLIMITED_FISH = cloud.user.unlimitedFish; }
+  else load();
+  try {
+    catWorld = window.createCatWorld({
+      host: document.getElementById('cat-world'),
+      initialArea: state.worldArea,
+      onAreaChange(area) { state.worldArea = area; save(); },
+      onOpenGallery: showGallery,
+    });
+  } catch (error) {
+    document.getElementById('world-fallback').hidden = false;
+    console.error('3D scene unavailable:', error);
+  }
+  villagePage = Math.floor(state.activeCat / VILLAGE_SLOTS.length);
+  if (state.cats.length === 0) {
+    renderAdopt(true);
+    showScreen('adopt');
+  } else {
+    renderHome();
+    showScreen('home');
+  }
+}
+startGame().catch(error => { console.error('Game startup failed:', error); toast('启动失败，请刷新重试'); });
+</script>
+</body>
+</html>

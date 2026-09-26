@@ -1,0 +1,21 @@
+{
+  "name": "cat-multiplication-park",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "db:local": "wrangler d1 migrations apply cat-game --local",
+    "dev": "npm run build && npm run db:local && wrangler dev --ip 127.0.0.1 --port 8787",
+    "deploy": "npm run build && wrangler deploy",
+    "test": "npm run build && node --test cat-*.test.js tests/*.test.mjs",
+    "test:local": "node scripts/test-local.mjs"
+  },
+  "dependencies": {
+    "oauth4webapi": "^3.0.0",
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

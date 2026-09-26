@@ -1,0 +1,6 @@
+APP_ENV=local
+OWNER_EMAIL=qing77270@gmail.com
+# Optional: only needed to test real Google OAuth on localhost.
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# SESSION_SECRET=replace-with-a-random-secret-of-at-least-32-characters
