@@ -14,7 +14,7 @@ export function fixture() {
       return { success: true, meta: { changes: Number(result.changes) } };
     }
   }
-  const env = { APP_ENV: 'local', OWNER_EMAIL: 'qing77270@gmail.com',
+  const env = { APP_ENV: 'local', OWNER_EMAIL: 'owner@example.com',
     ASSETS: { fetch: () => new Response('static asset') },
     DB: {
       prepare: sql => new Statement(sql),

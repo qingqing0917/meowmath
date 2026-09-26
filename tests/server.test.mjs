@@ -171,7 +171,7 @@ test('Google callback verifies signed identity and refuses forged or unverified 
   const key = await generateKeyPair('RS256', { extractable: true });
   const forgedKey = await generateKeyPair('RS256');
   const jwk = { ...await exportJWK(key.publicKey), kid: 'google-test', alg: 'RS256', use: 'sig' };
-  let nonce, verifier, signingKey = key.privateKey, verified = true, email = 'qing77270@gmail.com';
+  let nonce, verifier, signingKey = key.privateKey, verified = true, email = f.env.OWNER_EMAIL;
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async (url, options) => {

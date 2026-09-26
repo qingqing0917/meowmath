@@ -1,5 +1,6 @@
 APP_ENV=local
-OWNER_EMAIL=qing77270@gmail.com
+OWNER_EMAIL=owner@example.com
+# Replace with your own account only in the private .dev.vars file.
 # Optional: only needed to test real Google OAuth on localhost.
 # GOOGLE_CLIENT_ID=
 # GOOGLE_CLIENT_SECRET=

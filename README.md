@@ -1,6 +1,6 @@
 # 乘法猫猫乐园
 
-3D 猫咪养成与乘法练习。网页版使用 Google 登录，每个账号拥有独立的猫咪、鱼干和学习记录，数据保存在 Cloudflare D1。只有经过 Google 验证的 `qing77270@gmail.com` 账号有无限鱼干。
+3D 猫咪养成与乘法练习。网页版使用 Google 登录，每个账号拥有独立的猫咪、鱼干和学习记录，数据保存在 Cloudflare D1。只有经过 Google 验证、与私密配置匹配的专属账号有无限鱼干。
 
 ## 本地开发
 
@@ -69,7 +69,7 @@ npm run test:local
 旧版存档迁移只需一次：
 
 1. 用原来的浏览器打开本地 HTML，点击顶部“导出存档”。
-2. 登录线上 `qing77270@gmail.com`，点击“导入旧存档”，选择导出的 JSON。
+2. 登录线上配置的专属账号，点击“导入旧存档”，选择导出的 JSON。
 3. 确认后，猫咪和答题记录会覆盖该账号的云端进度。
 
 导入旧存档仅对专属账号开放；所有账号都可以导出备份。切换账号不会自动混用旧版浏览器存档。云端保存猫咪、成长、名字、性别、睡眠、当前家/公园区域、学习记录和鱼干；人物实时位置、移动动画、答题中途的当前回合不会恢复。
@@ -101,9 +101,10 @@ https://<网站域名>/auth/google/callback
 npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put GOOGLE_CLIENT_SECRET
 npx wrangler secret put SESSION_SECRET
+npx wrangler secret put OWNER_EMAIL
 ```
 
-`SESSION_SECRET` 使用密码工具生成的至少 32 字符的随机值。Google 密钥来自 OAuth 客户端，不需要提供 Google 邮箱密码。可把同样的三个配置放入不提交的 `.dev.vars`，用于可选的本地真实 Google 测试。
+`SESSION_SECRET` 使用密码工具生成的至少 32 字符的随机值。`OWNER_EMAIL` 填入需要专属权限的 Google 账号邮箱，通过 Cloudflare secret 保存，不写入公开源码。Google 密钥来自 OAuth 客户端，不需要提供 Google 邮箱密码。可把这些配置放入不提交的 `.dev.vars`，用于可选的本地真实 Google 测试；示例配置只使用虚构邮箱。
 
 4. 初始化远程数据库，再部署：
 
@@ -112,6 +113,6 @@ npx wrangler d1 migrations apply cat-game --remote
 npm run deploy
 ```
 
-生产 `APP_ENV` 保持 `production`，`OWNER_EMAIL` 保持 `qing77270@gmail.com`。`.dev.vars` 不会替代部署配置。`npm run build` 仅把游戏、必要脚本和 vendor 文件输出到 `dist/`；密钥、数据库、测试和服务端源文件不会作为静态资源发布。
+生产 `APP_ENV` 保持 `production`，`OWNER_EMAIL` 通过上面的 secret 命令配置。`.dev.vars` 不会替代部署配置。`npm run build` 仅把游戏、必要脚本和 vendor 文件输出到 `dist/`；密钥、数据库、测试和服务端源文件不会作为静态资源发布。
 
 5. 上线后验证 Google 登录、退出、刷新恢复存档，以及用另一 Google 账号验证独立存档和普通鱼干规则。配置真实 Google 客户端前，自动测试中的模拟登录不能替代这一步。
