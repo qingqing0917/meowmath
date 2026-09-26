@@ -267,7 +267,7 @@
   .bed-zzz { opacity:0; transition:opacity .3s; }
   .cat-scene.napping .bed-zzz { opacity:1; }
   /* 逗猫球：浮在猫前面独立一层，绳子从爬架顶垂下来；只有球和绳能被点，空白处点击穿透到猫 */
-  .cat-toy { position:absolute; left:140px; top:82px; width:60px; height:250px; z-index:6;
+  .cat-toy { position:absolute; left:128px; bottom:72px; width:60px; height:250px; z-index:6;
     transform-origin:12px 0; animation: toyswing 2.6s ease-in-out infinite; overflow:visible;
     pointer-events:none; }
   .cat-toy line, .cat-toy circle { pointer-events:auto; cursor:pointer; }
@@ -596,6 +596,11 @@
                 <text x="138" y="130" font-size="20" class="zz" style="animation-delay:.5s">z</text>
                 <text x="152" y="108" font-size="26" class="zz" style="animation-delay:1s">Z</text>
               </g>
+            </g>
+            <!-- 绑在顶板上的绳圈；下端与逗猫球的摆动固定点重合 -->
+            <g fill="none" stroke="#b08b5e" stroke-width="3" stroke-linecap="round" pointer-events="none">
+              <ellipse cx="134" cy="18" rx="4" ry="10"/>
+              <path d="M130 26 Q134 22 138 26 M132 28 L136 28"/>
             </g>
           </svg>
           <!-- 逗猫球：单独一层浮在猫前面（线放长猫够得到，且不被猫身体挡住点击） -->
