@@ -68,6 +68,9 @@
     margin-top:-2px; line-height:1; }
   .grid-house .v-house-runner { position:absolute; left:-30px; bottom:10px; width:52px;
     opacity:0; pointer-events:none; z-index:3; }
+  .v-house-runner .v-cat { position:relative; left:auto !important; bottom:auto !important;
+    z-index:auto !important; width:52px; transform:none; visibility:visible; pointer-events:none; }
+  .v-house-runner .v-name, .v-house-runner .v-mat { display:none; }
   .grid-house .v-house-runner.entering { animation:neighborhoodRunIn .8s ease-in forwards; }
   .grid-house .v-house-runner.leaving { animation:neighborhoodRunOut .8s ease-out forwards; }
   @keyframes neighborhoodRunIn { from{left:-30px;transform:scale(1);opacity:1}
@@ -2389,7 +2392,7 @@ function setVillageRunTarget(catEl, house) {
   catEl.style.setProperty('--run-y', `${houseBox.top + houseBox.height * .7 - catBox.top - catBox.height / 2}px`);
 }
 function visitVillageHouse(houseIndex) {
-  if (villageHouseBusy) return;
+  if (villageHouseBusy || !Number.isInteger(houseIndex) || houseIndex < 0 || houseIndex >= VILLAGE_HOUSE_COUNT) return;
   const house = document.querySelector(`.v-house[data-house="${houseIndex}"]`);
   if (!house) return;
   const occupant = villageHouseOccupants.get(houseIndex);
@@ -2435,11 +2438,10 @@ function visitVillageHouse(houseIndex) {
   if (!catEl) { renderVillage(); return; }
   villageHouseBusy = true;
   const inNeighborhood = house.classList.contains('grid-house');
+  const runner = inNeighborhood ? house.querySelector('.v-house-runner') : null;
   if (inNeighborhood) {
-    const runner = house.querySelector('.v-house-runner');
-    const catIndex = occupant === undefined ? Number(catEl.dataset.catIndex) : occupant;
-    const cat = state.cats[catIndex];
-    runner.innerHTML = catSVG(cat.breed, cat.stage, 52, false, false, cat.sex);
+    // Move the existing cat into the animation instead of drawing another copy.
+    runner.replaceChildren(catEl);
     runner.classList.remove('entering', 'leaving');
     void runner.offsetWidth;
     runner.classList.add(occupant === undefined ? 'entering' : 'leaving');
@@ -2458,14 +2460,20 @@ function visitVillageHouse(houseIndex) {
     catEl.classList.remove('running-in', 'running-out');
     if (occupant === undefined) catEl.classList.add('in-house');
     else catEl.classList.remove('in-house');
+    if (runner) {
+      document.getElementById('village-cats').appendChild(catEl);
+      runner.classList.remove('entering', 'leaving');
+      runner.replaceChildren();
+    }
     house.classList.remove('open');
     villageHouseBusy = false;
-    updateVillageHouses();
+    renderVillage();
     const catIndex = occupant === undefined ? Number(catEl.dataset.catIndex) : occupant;
     toast(`${catName(state.cats[catIndex])}${occupant === undefined ? '跑进猫窝啦！' : '从猫窝出来啦！'}`);
   }, 800);
 }
 function renderVillage() {
+  if (villageHouseBusy) return;
   renderVillageHouses();
   const wrap = document.getElementById('village-cats');
   wrap.innerHTML = '';
