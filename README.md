@@ -120,3 +120,27 @@ npm run deploy
 生产 `APP_ENV` 保持 `production`，`OWNER_EMAIL` 通过上面的 secret 命令配置。`.dev.vars` 不会替代部署配置。`npm run build` 仅把游戏、必要脚本和 vendor 文件输出到 `dist/`；密钥、数据库、测试和服务端源文件不会作为静态资源发布。
 
 5. 上线后验证 Google 登录、退出、刷新恢复存档，以及用另一 Google 账号验证独立存档和普通鱼干规则。配置真实 Google 客户端前，自动测试中的模拟登录不能替代这一步。
+
+## GitHub 自动部署
+
+Cloudflare Worker 已连接 `qingqing0917/meowmath`，生产构建配置如下：
+
+| 设置项 | 配置 |
+| --- | --- |
+| 生产分支 | `main` |
+| 构建命令 | `npm run build` |
+| 部署命令 | `npx wrangler deploy` |
+| 根目录 | 仓库根目录 `/` |
+
+以后推送新提交到 `main` 会触发 Cloudflare 自动构建和部署，无需每次在本地执行 `npm run deploy`。先在本地验证修改，再提交并推送：
+
+```sh
+npm test
+git add .
+git commit -m "Describe the change"
+git push
+```
+
+部署进度与日志可在 Cloudflare Worker 的 Builds 或 Deployments 页面查看。Google 登录凭据、会话密钥及专属账号邮箱继续保存在 Worker 的 secrets 中，无需填写到构建命令或提交到仓库。
+
+自动构建不会执行远程数据库迁移；新增数据库迁移文件时，需要单独执行 `npx wrangler d1 migrations apply cat-game --remote`。
