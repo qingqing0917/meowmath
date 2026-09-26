@@ -343,6 +343,14 @@
   .q-text { font-size:72px; font-weight:900; color:#3a3a4a; letter-spacing:4px; }
   .q-text .op { color:#ff7b54; }
   .answer-row { margin-top:24px; display:flex; gap:12px; justify-content:center; align-items:center; }
+  .answer-submit { position:relative; flex-shrink:0; }
+  .answer-submit:disabled { cursor:default; opacity:.75; transform:none; }
+  .answer-submit.loading .submit-label { visibility:hidden; }
+  .answer-submit.loading::after { content:''; position:absolute; left:50%; top:50%;
+    width:22px; height:22px; margin:-11px 0 0 -11px; border:3px solid rgba(255,255,255,.4);
+    border-top-color:#fff; border-radius:50%; animation:answerSpin .7s linear infinite; }
+  @keyframes answerSpin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce) { .answer-submit.loading::after { animation:none; } }
   #answerInput { width:200px; font-size:48px; font-weight:800; text-align:center; padding:8px;
     border:4px solid #ffcf8a; border-radius:18px; outline:none; color:#3a3a4a; font-family:inherit; }
   #answerInput:focus { border-color:#ff9a3d; box-shadow:0 0 0 5px rgba(255,154,61,.25); }
@@ -810,7 +818,7 @@
     <div class="encourage-tag" id="encourage-tag"></div>
     <form class="answer-row" onsubmit="event.preventDefault(); submitAnswer();">
       <input id="answerInput" inputmode="numeric" autocomplete="off" maxlength="2">
-      <button type="submit" class="btn blue">确定</button>
+      <button type="submit" class="btn blue answer-submit" id="answer-submit" aria-busy="false"><span class="submit-label">确定</span></button>
     </form>
     <div class="mini-cat-corner" id="mini-cat-corner"></div>
   </div>
@@ -1989,6 +1997,16 @@ const TRAIN_N = 10, CHALLENGE_SEC = 60;
 let session = null;
 let challengeTimer = null;
 
+function updateAnswerControls() {
+  const busy = !!(session && session.pending);
+  const button = document.getElementById('answer-submit');
+  button.disabled = !session || session.over || busy || (session.waiting && !session.retryQuestion);
+  button.classList.toggle('loading', busy);
+  button.setAttribute('aria-busy', String(busy));
+  button.setAttribute('aria-label', busy ? (session.waiting ? '出题中' : '提交中') : '确定');
+  document.getElementById('answerInput').readOnly = busy;
+}
+
 let roundStarting = false;
 async function startRound(mode) {
   if (roundStarting || (session && !session.over)) return;
@@ -2062,23 +2080,26 @@ async function nextQuestion() {
   if (!session || session.over || session.pending) return;
   const currentSession = session;
   session.waiting = true;
+  updateAnswerControls();
   if (!session.retryQuestion && session.mode !== 'challenge' && session.queue.length === 0) { endRound(); return; }
   const f = session.retryQuestion || (session.mode === 'challenge'
     ? weightedPick(session.current ? factKey(session.current[0], session.current[1]) : null)
     : session.queue.shift());
   if (CloudGame.enabled) {
     session.pending = true;
+    updateAnswerControls();
     try { session.questionId = (await CloudGame.question(session.roundId, f[0], f[1])).id; }
     catch (error) {
       session.retryQuestion = f;
       toast(error.message + '，请点击提交重试');
       return;
-    } finally { currentSession.pending = false; }
+    } finally { currentSession.pending = false; updateAnswerControls(); }
     if (session !== currentSession) return;
   }
   session.retryQuestion = null;
   session.answerRequest = null;
   session.waiting = false;
+  updateAnswerControls();
   session.current = f;
   session.wrongOnThis = false;
   const flip = Math.random() < .5;
@@ -2104,10 +2125,11 @@ async function submitAnswer() {
   let response = null;
   if (CloudGame.enabled) {
     session.pending = true;
+    updateAnswerControls();
     session.answerRequest ||= { questionId: session.questionId, answer: val, requestId: crypto.randomUUID() };
     try { response = await CloudGame.answer(session.roundId, session.answerRequest); }
     catch (error) { toast(error.message + '，请点击提交重试'); return; }
-    finally { session.pending = false; }
+    finally { currentSession.pending = false; updateAnswerControls(); }
     session.answerRequest = null;
   }
   const right = response ? response.right : val === a * b;
@@ -2177,6 +2199,7 @@ async function submitAnswer() {
     save();
     setTimeout(() => { if (session === currentSession) showKoujue(a, b); }, 400);
   }
+  updateAnswerControls();
   if (session && session.mode === 'challenge' && Date.now() >= session.endAt) endRound();
 }
 const ENCOURAGE = ['别灰心，再想一想！', '差一点点，你可以的！', '加油，再试一次～', '嗯……再算一算看？'];
@@ -2222,6 +2245,7 @@ function quitRound() {
   if (session && session.attempts > 0) { endRound(); }
   else {
     session = null;
+    updateAnswerControls();
     if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
     renderHome(); showScreen('home');
   }
@@ -2229,6 +2253,7 @@ function quitRound() {
 function endRound() {
   if (!session || session.over || session.pending) return;
   session.over = true;
+  updateAnswerControls();
   if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
   document.getElementById('koujue-overlay').classList.remove('show');
   if (!CloudGame.enabled) state.fish += session.fish;
@@ -2260,7 +2285,7 @@ function endRound() {
   session = null;
 }
 document.getElementById('answerInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitAnswer();
+  if (e.key === 'Enter') { e.preventDefault(); submitAnswer(); }
 });
 // 全局键盘：在答题界面自动聚焦输入框
 document.addEventListener('keydown', e => {

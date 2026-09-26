@@ -7,8 +7,16 @@ const html = readFileSync(new URL('../乘法猫猫乐园.html', import.meta.url)
 function harness(bridge = {}) {
   const elements = new Map(), timers = [], messages = [], saved = [];
   const element = id => {
-    if (!elements.has(id)) elements.set(id, { value: '', style: {}, classList: {
-      add() {}, remove() {} }, focus() {}, textContent: '', innerHTML: '' });
+    if (!elements.has(id)) {
+      const classes = new Set();
+      elements.set(id, { value: '', style: {}, attributes: {}, listeners: {}, classList: {
+        add(name) { classes.add(name); }, remove(name) { classes.delete(name); },
+        toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
+        contains(name) { return classes.has(name); }
+      }, setAttribute(name, value) { this.attributes[name] = value; },
+      addEventListener(name, listener) { this.listeners[name] = listener; },
+      focus() {}, textContent: '', innerHTML: '' });
+    }
     return elements.get(id);
   };
   const context = vm.createContext({
@@ -26,7 +34,7 @@ function harness(bridge = {}) {
     catName: () => '小猫', esc: value => value, kouJue: () => '二三得六'
   });
   const statCode = html.slice(html.indexOf('function statOf('), html.indexOf('function weightedPick('));
-  const roundCode = html.slice(html.indexOf('const TRAIN_N ='), html.indexOf("document.getElementById('answerInput').addEventListener"));
+  const roundCode = html.slice(html.indexOf('const TRAIN_N ='), html.indexOf('// 全局键盘'));
   vm.runInContext(statCode + roundCode, context);
   return { context, timers, messages, saved, element,
     run: code => vm.runInContext(code, context),
@@ -43,8 +51,18 @@ test('cloud rewards are credited once and duplicate clicks do not submit twice',
   } });
   await h.run("startRound('train')"); h.element('answerInput').value = '6';
   const pending = h.run('submitAnswer()');
+  assert.equal(h.element('answer-submit').disabled, true);
+  assert.equal(h.element('answer-submit').classList.contains('loading'), true);
+  assert.equal(h.element('answer-submit').attributes['aria-busy'], 'true');
+  assert.equal(h.element('answerInput').readOnly, true);
   await h.run('submitAnswer()'); assert.equal(calls, 1);
+  let prevented = false;
+  h.element('answerInput').listeners.keydown({ key: 'Enter', preventDefault() { prevented = true; } });
+  assert.equal(prevented, true); assert.equal(calls, 1);
   release(); await pending;
+  assert.equal(h.element('answer-submit').classList.contains('loading'), false);
+  assert.equal(h.element('answer-submit').attributes['aria-busy'], 'false');
+  assert.equal(h.element('answer-submit').disabled, true);
   await h.run('submitAnswer()'); assert.equal(calls, 1);
   assert.equal(h.session().fish, 1);
   h.run('endRound()'); assert.equal(h.context.state.fish, 1);
@@ -61,12 +79,43 @@ test('a lost answer response retries the same operation and preserves first-atte
   } });
   await h.run("startRound('train')"); h.element('answerInput').value = '5';
   await h.run('submitAnswer()'); assert.equal(h.context.state.stats['2x3'], undefined);
+  assert.equal(h.element('answer-submit').disabled, false);
+  assert.equal(h.element('answer-submit').classList.contains('loading'), false);
+  assert.equal(h.element('answerInput').readOnly, false);
   h.element('answerInput').value = '6';
   await h.run('submitAnswer()');
   assert.deepEqual(payloads[0], payloads[1]);
   assert.equal(h.context.state.stats['2x3'].n, 1);
   assert.equal(h.context.state.stats['2x3'].wrongN, 1);
   assert.equal(h.context.state.review['2x3'].left, 3);
+  assert.equal(h.element('answer-submit').disabled, false);
+});
+
+test('question loading disables submission and recovers after a failed request', async () => {
+  let release, fail = false;
+  const h = harness({ question: async () => {
+    await new Promise(resolve => { release = resolve; });
+    if (fail) throw new Error('网络错误');
+    return { id: 'question-id' };
+  } });
+  const starting = h.run("startRound('train')");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.element('answer-submit').disabled, true);
+  assert.equal(h.element('answer-submit').attributes['aria-label'], '出题中');
+  release(); await starting;
+  assert.equal(h.element('answer-submit').disabled, false);
+  fail = true;
+  const next = h.run('nextQuestion()');
+  assert.equal(h.element('answer-submit').classList.contains('loading'), true);
+  release(); await next;
+  assert.equal(h.element('answer-submit').disabled, false);
+  assert.equal(h.element('answer-submit').classList.contains('loading'), false);
+  fail = false;
+  const retry = h.run('submitAnswer()');
+  assert.equal(h.element('answer-submit').disabled, true);
+  release(); await retry;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.element('answer-submit').disabled, false);
 });
 
 test('a failed final question can be retried and old timers cannot advance a new round', async () => {
