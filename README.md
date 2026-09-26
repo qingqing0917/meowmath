@@ -2,6 +2,8 @@
 
 3D 猫咪养成与乘法练习。网页版使用 Google 登录，每个账号拥有独立的猫咪、鱼干和学习记录，数据保存在 Cloudflare D1。只有经过 Google 验证、与私密配置匹配的专属账号有无限鱼干。
 
+线上地址：[MeowMath](https://cat-multiplication-park.qing-idea.workers.dev)。
+
 ## 本地开发
 
 需要 Node.js 22.13 或更新版本，推荐 Node.js 24。
@@ -76,7 +78,7 @@ npm run test:local
 
 ## 配置并部署 Cloudflare
 
-此项目目前仅在本地实现和验证。真实 Google 登录、线上 D1 和部署需要以下配置。
+当前网站已部署，Google 登录与刷新恢复云端存档已完成手动验证。下面记录首次部署或复用项目时的配置步骤。
 
 1. 登录 Cloudflare 并创建 D1：
 
@@ -85,7 +87,9 @@ npx wrangler login
 npx wrangler d1 create cat-game
 ```
 
-把返回的数据库 ID 填入 `wrangler.jsonc` 的 `d1_databases[0].database_id`，替换全零占位值。确定网站地址，可使用 Workers 的 `https://cat-multiplication-park.<你的子域>.workers.dev` 或自定义域名，并在 `vars` 添加 `PUBLIC_ORIGIN`，值只包含协议和域名，不带路径。
+把返回的数据库 ID 填入 `wrangler.jsonc` 的 `d1_databases[0].database_id`。当前项目已填入线上数据库编号；复用项目时替换为自己创建的数据库编号。确定网站地址，可使用 Workers 的 `https://cat-multiplication-park.<你的子域>.workers.dev` 或自定义域名，并在 `vars` 设置 `PUBLIC_ORIGIN`，值只包含协议和域名，不带路径。
+
+数据库绑定名称使用 `DB`，与服务端的 `env.DB` 一致。配置中的 `preview_database_id` 保留原来的本地数据库标识，避免更换线上数据库编号后影响已有本地存档；本地运行仍使用本机数据库，线上部署使用 `database_id`。
 
 2. 在 Google Cloud Console 创建 OAuth 客户端，类型选择“Web 应用”，启用 OpenID Connect 所需的 `openid email profile` 范围。配置授权重定向 URI：
 
@@ -93,7 +97,7 @@ npx wrangler d1 create cat-game
 https://<网站域名>/auth/google/callback
 ```
 
-要测试真实 Google 本地登录，再添加 `http://127.0.0.1:8787/auth/google/callback`。配置 Google 应用受众与测试用户；处于测试模式时，把自己的邮箱加入测试用户名单。使用多个真实账号时按 Google 的发布要求配置受众。
+要测试真实 Google 本地登录，再添加 `http://127.0.0.1:8787/auth/google/callback`。Google 对只请求 `openid email profile` 的基础登录有测试模式例外，测试用户名单不一定必填；如果 Google 明确提示账号未获准参与测试，再到“受众群体”添加该账号。使用多个真实账号时按 Google 的要求配置受众。
 
 3. 保存生产密钥，按命令提示输入，勿写入源码或公开文件：
 
