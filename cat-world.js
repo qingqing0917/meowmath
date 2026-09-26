@@ -510,6 +510,26 @@
     let cameraAngle = 0.69;
     let cameraElevation = 0.61;
     let cameraDistance = 31;
+    const overviewBounds = {
+      home: new T.Box3().setFromObject(home),
+      park: new T.Box3().setFromObject(park)
+    };
+    const overviewSpheres = Object.fromEntries(Object.entries(overviewBounds)
+      .map(([name, bounds]) => [name, bounds.getBoundingSphere(new T.Sphere())]));
+
+    function cameraView() {
+      const max = area === 'home' ? 46 : 48;
+      const start = area === 'home' ? 36 : 32;
+      const overview = Math.max(0, Math.min(1, (cameraDistance - start) / (max - start)));
+      const sphere = overviewSpheres[area];
+      const vertical = Math.tan(T.MathUtils.degToRad(camera.fov / 2));
+      const halfAngle = Math.atan(Math.min(vertical, vertical * camera.aspect) * 0.85);
+      // Fit the whole map inside both dimensions, including when the camera rotates.
+      const radius = sphere.radius + Math.abs(sphere.center.y - 0.95);
+      const fitDistance = (radius / Math.sin(halfAngle) + 0.95) / Math.hypot(1, cameraElevation);
+      return { overview, center: sphere.center,
+        distance: T.MathUtils.lerp(cameraDistance, Math.max(max, fitDistance), overview) };
+    }
     let gait = 0;
     let walkerGait = 0;
     let markerAge = 0;
@@ -803,13 +823,23 @@
         catRoot.position.z * 0.4)
         : new T.Vector3((walker.position.x + catRoot.position.x) / 2, 0,
           (walker.position.z + catRoot.position.z) / 2);
+      const view = cameraView();
+      center.x = T.MathUtils.lerp(center.x, view.center.x, view.overview);
+      center.z = T.MathUtils.lerp(center.z, view.center.z, view.overview);
       focus.lerp(center, Math.min(1, dt * 8));
       sun.position.set(focus.x - 7, 13, focus.z + 10);
       sun.target.position.set(focus.x, 0, focus.z);
-      const desiredCamera = new T.Vector3(focus.x + Math.sin(cameraAngle) * cameraDistance,
-        cameraDistance * cameraElevation, focus.z + Math.cos(cameraAngle) * cameraDistance);
+      const desiredCamera = new T.Vector3(focus.x + Math.sin(cameraAngle) * view.distance,
+        view.distance * cameraElevation, focus.z + Math.cos(cameraAngle) * view.distance);
       camera.position.lerp(desiredCamera, Math.min(1, dt * 8));
       camera.lookAt(focus.x, 0.95, focus.z);
+      const viewingDistance = camera.position.distanceTo(new T.Vector3(focus.x, 0.95, focus.z));
+      const far = Math.max(200, viewingDistance + overviewSpheres[area].radius * 2 + 30);
+      if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
+      if (scene.fog) {
+        scene.fog.near = Math.max(56, viewingDistance + overviewSpheres[area].radius);
+        scene.fog.far = Math.max(145, scene.fog.near + 90);
+      }
     }
     function resize() {
       const width = Math.max(1, viewport.clientWidth || window.innerWidth);

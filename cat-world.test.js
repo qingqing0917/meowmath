@@ -6,13 +6,15 @@ const vm = require('node:vm');
 const T = require('./vendor/three.min.js');
 
 test('the furnished home and park initialize together', () => {
-  const domElement = { addEventListener() {} };
-  let scene, frame;
+  const listeners = {};
+  const domElement = { addEventListener(name, listener) { listeners[name] = listener; },
+    setPointerCapture() {} };
+  let scene, frame, camera;
   T.WebGLRenderer = class {
     constructor() { this.domElement = domElement; this.shadowMap = {}; }
     setPixelRatio() {}
     setSize() {}
-    render(current) { scene = current; }
+    render(current, view) { scene = current; camera = view; }
   };
   T.Clock.prototype.getDelta = () => 1 / 60;
   const viewport = { clientWidth: 1000, clientHeight: 650, appendChild() {} };
@@ -21,7 +23,7 @@ test('the furnished home and park initialize together', () => {
     dataset: {},
     querySelector(selector) { return selector === '.world-canvas' ? viewport : action; },
     querySelectorAll() { return []; },
-    addEventListener() {}, closest() { return {}; },
+    addEventListener() {}, focus() {}, closest() { return {}; },
     getBoundingClientRect() { return { top: 0, bottom: 650 }; }
   };
   const context = vm.createContext({
@@ -68,6 +70,32 @@ test('the furnished home and park initialize together', () => {
     }
   }
   for (let i = 0; i < fish.length; i++) assert.ok(fish[i].position.distanceTo(initial[i]) > 0.1);
+  for (let i = 0; i < 40; i++) listeners.wheel({ deltaY: 1, preventDefault() {} });
+  function assertOverview(group) {
+    for (let i = 0; i < 180; i++) frame();
+    camera.updateMatrixWorld(true);
+    const bounds = new T.Box3().setFromObject(group);
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
+          const projected = new T.Vector3(x, y, z).project(camera);
+          assert.ok(Math.abs(projected.x) < 0.95 && Math.abs(projected.y) < 0.95,
+            'zooming all the way out must show every map corner');
+          assert.ok(projected.z > -1 && projected.z < 1, 'the map must remain within camera clipping planes');
+        }
+      }
+    }
+  }
+  for (const [width, height, dragY] of [[1600, 600, 0], [390, 600, -200], [1800, 400, 200]]) {
+    viewport.clientWidth = width; viewport.clientHeight = height;
+    world.resize();
+    listeners.pointerdown({ clientX: 0, clientY: 0, pointerId: 1 });
+    listeners.pointermove({ clientX: 200, clientY: dragY });
+    listeners.pointerup({});
+    assertOverview(park);
+  }
   world.setArea('home');
   assert.equal(host.dataset.area, 'home');
+  for (let i = 0; i < 40; i++) listeners.wheel({ deltaY: 1, preventDefault() {} });
+  assertOverview(scene.children[0]);
 });
