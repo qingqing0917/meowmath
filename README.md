@@ -4,6 +4,8 @@
 
 线上地址：[MeowMath](https://cat-multiplication-park.qing-idea.workers.dev)。
 
+从零上线的完整步骤见 [Cloudflare 部署操作文档](docs/CLOUDFLARE_DEPLOY.md)。
+
 ## 本地开发
 
 需要 Node.js 22.13 或更新版本，推荐 Node.js 24。
