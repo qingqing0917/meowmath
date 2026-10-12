@@ -646,7 +646,7 @@
           <div class="food-grid" id="food-grid" role="group" aria-labelledby="shop-title"></div>
         </div>
       </div>
-      <div class="menu-col">
+      <div class="menu-col" id="practice-modes">
         <button class="mode-btn" onclick="startRound('train')">
           <span class="icon">🎯</span>
           <span><span class="t">每日训练</span><br><span class="d">10 道题 · 全表混合 · 赚小鱼干</span></span>
@@ -830,7 +830,7 @@
     <div class="result-stars" id="result-stars">⭐⭐⭐</div>
     <div class="result-big" id="result-big"></div>
     <div class="result-sub" id="result-sub"></div>
-    <button class="btn" onclick="renderHome();showScreen('home')">回到乐园 🏠</button>
+    <button class="btn" onclick="renderHome();showScreen('home', 'practice-modes')">回到乐园 🏠</button>
     <button class="btn blue" id="again-btn" style="margin-left:10px;">再来一次 🔁</button>
   </div>
 </div>
@@ -1474,9 +1474,14 @@ function speak(text) {
 }
 
 /* ══════════════════ 通用 UI ══════════════════ */
-function showScreen(name) {
+function showScreen(name, scrollTarget) {
+  const current = document.querySelector('.screen.active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
+  if (current?.id !== 'screen-' + name) {
+    if (scrollTarget) document.getElementById(scrollTarget).scrollIntoView({ block: 'center' });
+    else window.scrollTo(0, 0);
+  }
   if (name === 'home' && catWorld) requestAnimationFrame(() => catWorld.resize());
 }
 let toastTimer = null;
@@ -2247,7 +2252,7 @@ function quitRound() {
     session = null;
     updateAnswerControls();
     if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
-    renderHome(); showScreen('home');
+    renderHome(); showScreen('home', 'practice-modes');
   }
 }
 function endRound() {
